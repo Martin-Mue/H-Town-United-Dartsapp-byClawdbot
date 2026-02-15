@@ -81,21 +81,24 @@ export function TrainingPage() {
     switch (drill.id) {
       case 'doubles': {
         const ratio = Math.max(0, Math.min(1, hits / Math.max(1, attempts)));
-        return { score: Math.round(ratio * 100), metrics: { attempts, hits } };
+        const sampleQuality = Math.max(0.6, Math.min(1, attempts / 30));
+        return { score: Math.round(ratio * 100 * sampleQuality), metrics: { attempts, hits } };
       }
       case 'clock': {
         const progress = Math.max(0, Math.min(20, highestReached));
-        const efficiency = Math.max(0, Math.min(1, 60 / Math.max(20, dartsUsed)));
-        return { score: Math.round((progress / 20) * 70 + efficiency * 30), metrics: { highestReached, dartsUsed } };
+        const parDarts = Math.max(1, progress * 3);
+        const efficiency = Math.max(0, Math.min(1, parDarts / Math.max(parDarts, dartsUsed)));
+        return { score: Math.round((progress / 20) * 75 + efficiency * 25), metrics: { highestReached, dartsUsed } };
       }
       case 'finish': {
         const success = checkoutsCompleted / Math.max(1, checkoutAttempts);
         const speedBonus = Math.max(0, Math.min(1, (6 - avgDartsForCheckout) / 3));
-        return { score: Math.round(success * 80 + speedBonus * 20), metrics: { checkoutsCompleted, checkoutAttempts, avgDartsForCheckout } };
+        return { score: Math.round(success * 75 + speedBonus * 25), metrics: { checkoutsCompleted, checkoutAttempts, avgDartsForCheckout } };
       }
       case 'pressure': {
         const clutch = wonScenarios / Math.max(1, scenarioCount);
-        return { score: Math.round(clutch * 100), metrics: { wonScenarios, scenarioCount } };
+        const stabilityBonus = Math.max(0.7, Math.min(1, scenarioCount / 12));
+        return { score: Math.round(clutch * 100 * stabilityBonus), metrics: { wonScenarios, scenarioCount } };
       }
       case 'random': {
         const solved = checkoutsCompleted / Math.max(1, checkoutAttempts);
@@ -173,10 +176,13 @@ export function TrainingPage() {
           </select>
 
           {selectedDrill.id === 'doubles' && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <NumberField label="Versuche" value={attempts} setValue={setAttempts} />
-              <NumberField label="Treffer" value={hits} setValue={setHits} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <NumberField label="Versuche" value={attempts} setValue={setAttempts} />
+                <NumberField label="Treffer" value={hits} setValue={setHits} />
+              </div>
+              <p className="text-[11px] muted-text">Doubles-Modus misst reale Doppelquote (Treffer / Versuche).</p>
+            </>
           )}
 
           {selectedDrill.id === 'clock' && (
@@ -195,10 +201,13 @@ export function TrainingPage() {
           )}
 
           {selectedDrill.id === 'pressure' && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <NumberField label="Gewonnene Szenarien" value={wonScenarios} setValue={setWonScenarios} />
-              <NumberField label="Szenarien gesamt" value={scenarioCount} setValue={setScenarioCount} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <NumberField label="Gewonnene Szenarien" value={wonScenarios} setValue={setWonScenarios} />
+                <NumberField label="Szenarien gesamt" value={scenarioCount} setValue={setScenarioCount} />
+              </div>
+              <p className="text-[11px] muted-text">Pressure misst Decider-/Drucksituationen: gewonnene Szenarien ÷ gesamt.</p>
+            </>
           )}
 
           {selectedDrill.id === 't20' && (
@@ -208,7 +217,10 @@ export function TrainingPage() {
             </div>
           )}
 
-          <p className="text-xs muted-text">Berechneter Trainingsscore: <span className="primary-text font-semibold">{drillScorePreview}</span></p>
+          <div className="rounded-lg bg-slate-800 p-2 text-xs muted-text">
+            <p>Berechneter Trainingsscore: <span className="primary-text font-semibold">{drillScorePreview}</span>/100</p>
+            <p className="mt-1">Interpretation: &lt;40 = klarer Trainingsbedarf · 40-70 = solide Basis · &gt;70 = stark.</p>
+          </div>
 
           <button disabled={!selectedPlayerId} onClick={completeSession} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-60">
             <Play size={16} /> Training abschließen
