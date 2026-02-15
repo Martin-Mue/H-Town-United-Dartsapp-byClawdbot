@@ -45,6 +45,11 @@ export class DartsMatchAggregate extends AggregateRoot {
     return this.players[this.activePlayerIndex];
   }
 
+  /** Returns configured game mode for this match. */
+  public getMode(): MatchConfiguration['mode'] {
+    return this.configuration.mode;
+  }
+
   /** Returns running match scoreboard containing legs and sets. */
   public getScoreboard(): MatchScoreboard {
     return this.scoreboard;

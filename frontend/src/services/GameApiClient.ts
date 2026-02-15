@@ -11,15 +11,26 @@ export interface MatchCreationRequest {
 
 export interface MatchStateDto {
   matchId: string;
+  mode: GameMode;
   winnerPlayerId: string | null;
   activePlayerId: string;
   players: Array<{
     playerId: string;
     displayName: string;
     score: number;
+    cricketScore: number;
     average: number;
     checkoutPercentage: number;
     highestTurnScore: number;
+    cricketMarks: {
+      m15: number;
+      m16: number;
+      m17: number;
+      m18: number;
+      m19: number;
+      m20: number;
+      bull: number;
+    };
   }>;
   scoreboard: Array<{
     playerId: string;
@@ -43,7 +54,7 @@ export class GameApiClient {
     return response.json();
   }
 
-  /** Registers one turn and returns latest match state. */
+  /** Registers one x01 turn and returns latest match state. */
   public async registerTurn(
     matchId: string,
     payload: { points: number; finalDartMultiplier: 1 | 2 | 3 },
@@ -54,6 +65,20 @@ export class GameApiClient {
       body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error('Failed to register turn.');
+    return response.json();
+  }
+
+  /** Registers one cricket hit and returns latest match state. */
+  public async registerCricketTurn(
+    matchId: string,
+    payload: { targetNumber: 15 | 16 | 17 | 18 | 19 | 20 | 25; multiplier: 1 | 2 | 3 },
+  ): Promise<MatchStateDto> {
+    const response = await fetch(`${this.baseUrl}/api/game/matches/${matchId}/turns/cricket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to register cricket turn.');
     return response.json();
   }
 

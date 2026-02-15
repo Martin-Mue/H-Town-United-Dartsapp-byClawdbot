@@ -87,6 +87,7 @@ export class MatchApplicationService {
 
     return {
       matchId: match.matchId,
+      mode: match.getMode(),
       winnerPlayerId: match.getWinnerPlayerId(),
       activePlayerId: match.getActivePlayer().playerId,
       players: players.map((player) => ({

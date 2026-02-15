@@ -1,6 +1,7 @@
 /** Read model for returning complete match state to API clients. */
 export interface MatchStateDto {
   matchId: string;
+  mode: 'X01_301' | 'X01_501' | 'CRICKET' | 'CUSTOM';
   winnerPlayerId: string | null;
   activePlayerId: string;
   players: Array<{
