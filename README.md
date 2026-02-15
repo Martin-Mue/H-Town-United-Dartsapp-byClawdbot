@@ -17,6 +17,12 @@ npm run dev
 ```
 API docs: `http://localhost:8080/docs`
 
+Run validation suite:
+```bash
+npm run build
+npm test
+```
+
 ### Frontend
 ```bash
 cd frontend
