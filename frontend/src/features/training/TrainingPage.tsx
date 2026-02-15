@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Dumbbell, Play, Target, RotateCw, Crosshair, Zap, Trophy, CheckCircle2, BookOpen } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Dumbbell, Play, Target, RotateCw, Crosshair, Zap, Trophy, CheckCircle2, BookOpen, Camera, CameraOff } from 'lucide-react';
 import { MODE_RULES } from './modeRules';
 
 type ManagedPlayer = {
@@ -45,6 +45,12 @@ export function TrainingPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [doneLabel, setDoneLabel] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraHint, setCameraHint] = useState<string | null>(null);
+  const [trainingMultiplier, setTrainingMultiplier] = useState<1 | 2 | 3>(1);
+  const [trainingSegment, setTrainingSegment] = useState<number>(20);
+  const [trainingThrows, setTrainingThrows] = useState<Array<{ base: number; mult: 1 | 2 | 3; points: number }>>([]);
 
   const [attempts, setAttempts] = useState(30);
   const [hits, setHits] = useState(10);
@@ -114,6 +120,50 @@ export function TrainingPage() {
     }
   };
 
+  const toggleCamera = async () => {
+    if (cameraOn) {
+      const stream = videoRef.current?.srcObject as MediaStream | null;
+      stream?.getTracks().forEach((track) => track.stop());
+      if (videoRef.current) videoRef.current.srcObject = null;
+      setCameraOn(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraHint('Kamera aktiv (Training): Eingabe läuft wie im Spiel über Segmente + Multiplikator.');
+      setCameraOn(true);
+    } catch {
+      setCameraHint('Kamera konnte nicht gestartet werden. Bitte Browser-Berechtigung prüfen.');
+    }
+  };
+
+  const addTrainingDart = () => {
+    if (trainingThrows.length >= 120) return;
+    const points = trainingSegment === 50 ? 50 : Math.min(60, trainingSegment * trainingMultiplier);
+    setTrainingThrows((prev) => [...prev, { base: trainingSegment, mult: trainingMultiplier, points }]);
+  };
+
+  const applyThrowMetrics = () => {
+    if (trainingThrows.length === 0) return;
+    const darts = trainingThrows;
+    setAttempts(darts.length);
+    setHits(darts.filter((d) => d.mult === 2 && d.base > 0).length);
+    setHighestReached(Math.max(1, ...darts.map((d) => (d.base >= 1 && d.base <= 20 ? d.base : 1))));
+    setDartsUsed(darts.length);
+    setCheckoutsCompleted(darts.filter((d) => d.mult === 2 || d.base === 50).length);
+    setCheckoutAttempts(Math.max(1, Math.floor(darts.length / 3)));
+    setAvgDartsForCheckout(Math.max(1, Math.min(9, Math.round(darts.length / Math.max(1, Math.floor(darts.length / 9))))));
+    setWonScenarios(Math.floor(darts.filter((d) => d.points >= 40).length / 2));
+    setScenarioCount(Math.max(1, Math.floor(darts.length / 3)));
+    setT20Hits(darts.filter((d) => d.base === 20 && d.mult === 3).length);
+    setT20Darts(darts.length);
+  };
+
   const completeSession = () => {
     if (!selectedDrill || !selectedPlayerId) return;
 
@@ -150,6 +200,7 @@ export function TrainingPage() {
     }
 
     setDoneLabel(`${selectedDrill.name} gespeichert (Score ${score}) und Spielerwerte aktualisiert.`);
+    setTrainingThrows([]);
     setSelectedDrill(null);
   };
 
@@ -175,6 +226,46 @@ export function TrainingPage() {
               <option key={p.id} value={p.id}>{p.displayName}</option>
             ))}
           </select>
+
+          <div className="rounded-xl border soft-border bg-slate-900/60 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase muted-text">Trainingseingabe (wie Spiel)</p>
+              <button onClick={toggleCamera} className="rounded bg-slate-800 px-2 py-1 text-[11px] flex items-center gap-1">
+                {cameraOn ? <CameraOff size={12} /> : <Camera size={12} />} {cameraOn ? 'Kamera aus' : 'Kamera'}
+              </button>
+            </div>
+
+            {cameraOn && <video ref={videoRef} className="w-full rounded-lg border soft-border bg-black" muted playsInline />}
+            {cameraHint && <p className="text-[11px] muted-text">{cameraHint}</p>}
+
+            <div className="grid grid-cols-3 gap-1">
+              {[1, 2, 3].map((v) => (
+                <button key={v} onClick={() => setTrainingMultiplier(v as 1 | 2 | 3)} className={`rounded p-1 text-xs ${trainingMultiplier === v ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
+                  {v === 1 ? 'Single' : v === 2 ? 'Double' : 'Triple'}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                <button key={n} onClick={() => setTrainingSegment(n)} className={`rounded p-1 text-xs ${trainingSegment === n ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-1">
+              <button onClick={() => setTrainingSegment(0)} className="rounded bg-slate-800 p-1 text-xs">Miss</button>
+              <button onClick={() => setTrainingSegment(25)} className="rounded bg-slate-800 p-1 text-xs">Bull</button>
+              <button onClick={() => setTrainingSegment(50)} className="rounded bg-slate-800 p-1 text-xs">Bullseye</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1">
+              <button onClick={addTrainingDart} className="rounded bg-slate-800 p-1.5 text-xs">Dart hinzufügen</button>
+              <button onClick={applyThrowMetrics} className="rounded bg-sky-400 p-1.5 text-xs font-semibold text-slate-900">Wurfdaten übernehmen</button>
+            </div>
+            <p className="text-[11px] muted-text">Darts: {trainingThrows.length} · Letzter: {trainingThrows.at(-1) ? `${trainingThrows.at(-1)?.base}x${trainingThrows.at(-1)?.mult}` : '—'}</p>
+          </div>
 
           {selectedDrill.id === 'doubles' && (
             <>
