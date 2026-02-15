@@ -47,6 +47,11 @@ export function DashboardPage() {
     }
   }, []);
 
+  const clubRanking = useMemo(() => {
+    const localIds = new Set(managedPlayers.map((p) => p.id));
+    return ranking.filter((entry) => localIds.has(entry.playerId));
+  }, [ranking, managedPlayers]);
+
   const loadData = async () => {
     try {
       setErrorMessage(null);
@@ -58,7 +63,7 @@ export function DashboardPage() {
 
       if (!summaryResponse.ok || !rankingResponse.ok || !recentResponse.ok) throw new Error('bad status');
       setSummary((await summaryResponse.json()) as DashboardSummary);
-      setRanking(((await rankingResponse.json()) as { ranking: GlobalRankingEntry[] }).ranking.slice(0, 5));
+      setRanking(((await rankingResponse.json()) as { ranking: GlobalRankingEntry[] }).ranking);
       setRecentMatches(((await recentResponse.json()) as { matches: RecentMatchItem[] }).matches);
     } catch {
       setErrorMessage('Backend nicht erreichbar. Starte API für Live-Daten.');
@@ -129,14 +134,15 @@ export function DashboardPage() {
       </div>
 
       <div>
-        <h3 className="text-xs uppercase tracking-wider muted-text mb-2">Global Ranking (ELO)</h3>
+        <h3 className="text-xs uppercase tracking-wider muted-text mb-2">Vereinsranking (ELO)</h3>
         <div className="space-y-2">
-          {ranking.map((entry, index) => (
+          {clubRanking.slice(0, 5).map((entry, index) => (
             <div key={entry.playerId} className="card-bg rounded-xl border soft-border px-3 py-2 text-xs flex items-center justify-between">
               <span>#{index + 1} {entry.playerId}</span>
               <span className="primary-text font-semibold">{entry.rating}</span>
             </div>
           ))}
+          {clubRanking.length === 0 && <div className="card-bg rounded-xl border soft-border px-3 py-2 text-xs muted-text">Noch kein Vereinsranking verfügbar.</div>}
         </div>
       </div>
 

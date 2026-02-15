@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, UserPlus, X } from 'lucide-react';
+import { Search, UserPlus, X, Sparkles } from 'lucide-react';
 
 type CheckoutMode = 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
 type MembershipStatus = 'CLUB_MEMBER' | 'TRIAL';
@@ -22,67 +22,17 @@ const SEED_VERSION_KEY = 'htown-player-seed-version';
 const SEED_VERSION = 'v1-force-reset-5';
 
 const SEED_PLAYERS: ManagedPlayer[] = [
-  {
-    id: 'seed-lukas',
-    displayName: 'Lukas Weber',
-    membershipStatus: 'CLUB_MEMBER',
-    preferredCheckoutMode: 'DOUBLE_OUT',
-    notes: 'Captain, strong checkout routes.',
-    currentAverage: 71,
-    checkoutPercentage: 38,
-    pressurePerformanceIndex: 79,
-    total180s: 24,
-    avatarUrl: '',
-  },
-  {
-    id: 'seed-mert',
-    displayName: 'Mert Kaya',
-    membershipStatus: 'CLUB_MEMBER',
-    preferredCheckoutMode: 'MASTER_OUT',
-    notes: 'Explosive scoring profile.',
-    currentAverage: 74,
-    checkoutPercentage: 31,
-    pressurePerformanceIndex: 68,
-    total180s: 33,
-    avatarUrl: '',
-  },
-  {
-    id: 'seed-jonas',
-    displayName: 'Jonas Hoffmann',
-    membershipStatus: 'CLUB_MEMBER',
-    preferredCheckoutMode: 'DOUBLE_OUT',
-    notes: 'Reliable doubles specialist.',
-    currentAverage: 63,
-    checkoutPercentage: 41,
-    pressurePerformanceIndex: 73,
-    total180s: 9,
-    avatarUrl: '',
-  },
-  {
-    id: 'seed-sarah',
-    displayName: 'Sarah Neumann',
-    membershipStatus: 'TRIAL',
-    preferredCheckoutMode: 'SINGLE_OUT',
-    notes: 'Schnuppermodus, first league prep.',
-    currentAverage: 47,
-    checkoutPercentage: 22,
-    pressurePerformanceIndex: 52,
-    total180s: 1,
-    avatarUrl: '',
-  },
-  {
-    id: 'seed-ben',
-    displayName: 'Ben Albrecht',
-    membershipStatus: 'TRIAL',
-    preferredCheckoutMode: 'DOUBLE_OUT',
-    notes: 'Schnuppermodus, strong on T20 reps.',
-    currentAverage: 54,
-    checkoutPercentage: 25,
-    pressurePerformanceIndex: 57,
-    total180s: 3,
-    avatarUrl: '',
-  },
+  { id: 'seed-lukas', displayName: 'Lukas Weber', membershipStatus: 'CLUB_MEMBER', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Captain, strong checkout routes.', currentAverage: 71, checkoutPercentage: 38, pressurePerformanceIndex: 79, total180s: 24, avatarUrl: '' },
+  { id: 'seed-mert', displayName: 'Mert Kaya', membershipStatus: 'CLUB_MEMBER', preferredCheckoutMode: 'MASTER_OUT', notes: 'Explosive scoring profile.', currentAverage: 74, checkoutPercentage: 31, pressurePerformanceIndex: 68, total180s: 33, avatarUrl: '' },
+  { id: 'seed-jonas', displayName: 'Jonas Hoffmann', membershipStatus: 'CLUB_MEMBER', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Reliable doubles specialist.', currentAverage: 63, checkoutPercentage: 41, pressurePerformanceIndex: 73, total180s: 9, avatarUrl: '' },
+  { id: 'seed-sarah', displayName: 'Sarah Neumann', membershipStatus: 'TRIAL', preferredCheckoutMode: 'SINGLE_OUT', notes: 'Schnuppermodus, first league prep.', currentAverage: 47, checkoutPercentage: 22, pressurePerformanceIndex: 52, total180s: 1, avatarUrl: '' },
+  { id: 'seed-ben', displayName: 'Ben Albrecht', membershipStatus: 'TRIAL', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Schnuppermodus, strong on T20 reps.', currentAverage: 54, checkoutPercentage: 25, pressurePerformanceIndex: 57, total180s: 3, avatarUrl: '' },
 ];
+
+function generateHtownAvatar(displayName: string, seed = 'htown'): string {
+  const prompt = encodeURIComponent(`professional darts player portrait, H-Town United dart jersey, dark arena lights, realistic, ${displayName}`);
+  return `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&seed=${encodeURIComponent(`${seed}-${displayName}`)}`;
+}
 
 export function PlayersPage() {
   const [players, setPlayers] = useState<ManagedPlayer[]>(() => {
@@ -106,29 +56,30 @@ export function PlayersPage() {
       return SEED_PLAYERS;
     }
   });
+
   const [query, setQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [modeInput, setModeInput] = useState<CheckoutMode>('DOUBLE_OUT');
   const [statusInput, setStatusInput] = useState<MembershipStatus>('CLUB_MEMBER');
+  const [avatarInput, setAvatarInput] = useState('');
 
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
 
-  const filtered = useMemo(
-    () => players.filter((p) => p.displayName.toLowerCase().includes(query.toLowerCase())),
-    [players, query],
-  );
+  const filtered = useMemo(() => players.filter((p) => p.displayName.toLowerCase().includes(query.toLowerCase())), [players, query]);
 
   const addPlayer = () => {
-    if (!nameInput.trim()) return;
+    const trimmedName = nameInput.trim();
+    if (!trimmedName) return;
+
     persist([
       ...players,
       {
         id: `p-${crypto.randomUUID().slice(0, 8)}`,
-        displayName: nameInput.trim(),
+        displayName: trimmedName,
         membershipStatus: statusInput,
         preferredCheckoutMode: modeInput,
         notes: '',
@@ -136,13 +87,25 @@ export function PlayersPage() {
         checkoutPercentage: 20,
         pressurePerformanceIndex: 50,
         total180s: 0,
-        avatarUrl: '',
+        avatarUrl: avatarInput || generateHtownAvatar(trimmedName, 'create'),
       },
     ]);
+
     setNameInput('');
     setModeInput('DOUBLE_OUT');
     setStatusInput('CLUB_MEMBER');
+    setAvatarInput('');
     setShowModal(false);
+  };
+
+  const generateAvatarForModal = () => {
+    const trimmedName = nameInput.trim();
+    if (!trimmedName) return;
+    setAvatarInput(generateHtownAvatar(trimmedName, 'modal'));
+  };
+
+  const generateAvatarForPlayer = (playerId: string, displayName: string) => {
+    persist(players.map((p) => (p.id === playerId ? { ...p, avatarUrl: generateHtownAvatar(displayName, playerId) } : p)));
   };
 
   return (
@@ -156,12 +119,7 @@ export function PlayersPage() {
 
       <div className="card-bg border soft-border rounded-xl p-3 flex items-center gap-2">
         <Search size={16} className="muted-text" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Mitglied suchen..."
-          className="bg-transparent w-full text-sm outline-none"
-        />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Mitglied suchen..." className="bg-transparent w-full text-sm outline-none" />
       </div>
 
       <div className="space-y-3">
@@ -172,6 +130,9 @@ export function PlayersPage() {
               <div className="min-w-0">
                 <p className="font-semibold truncate">{player.displayName}</p>
                 <p className="text-xs muted-text">Ø {player.currentAverage} · {player.checkoutPercentage}% Siege · {player.total180s}x 180</p>
+                <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="mt-1 text-[11px] primary-text flex items-center gap-1">
+                  <Sparkles size={12} /> KI-Bild generieren
+                </button>
               </div>
             </div>
             <div className="text-right">
@@ -191,25 +152,26 @@ export function PlayersPage() {
               <h3 className="text-xl uppercase">Neues Mitglied</h3>
               <button onClick={() => setShowModal(false)}><X size={16} /></button>
             </div>
-            <input
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Vor- und Nachname"
-              className="w-full rounded-xl bg-slate-800 border border-sky-400/60 p-3"
-            />
-            <select
-              value={modeInput}
-              onChange={(e) => setModeInput(e.target.value as CheckoutMode)}
-              className="w-full rounded-xl bg-slate-800 p-3"
-            >
+
+            <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Vor- und Nachname" className="w-full rounded-xl bg-slate-800 border border-sky-400/60 p-3" />
+
+            <button onClick={generateAvatarForModal} className="w-full rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
+              <Sparkles size={12} /> KI-Bild im H-Town Look generieren
+            </button>
+
+            {avatarInput && <img src={avatarInput} alt="Avatar preview" className="h-28 w-28 mx-auto rounded-xl object-cover border soft-border" />}
+
+            <select value={modeInput} onChange={(e) => setModeInput(e.target.value as CheckoutMode)} className="w-full rounded-xl bg-slate-800 p-3">
               <option value="SINGLE_OUT">Single Out</option>
               <option value="DOUBLE_OUT">Double Out</option>
               <option value="MASTER_OUT">Master Out</option>
             </select>
+
             <select value={statusInput} onChange={(e) => setStatusInput(e.target.value as MembershipStatus)} className="w-full rounded-xl bg-slate-800 p-3">
               <option value="CLUB_MEMBER">Vereinsmitglied</option>
               <option value="TRIAL">Schnuppermodus</option>
             </select>
+
             <button onClick={addPlayer} className="w-full rounded-xl bg-sky-400 text-slate-900 font-semibold p-3">Mitglied hinzufügen</button>
           </div>
         </div>
