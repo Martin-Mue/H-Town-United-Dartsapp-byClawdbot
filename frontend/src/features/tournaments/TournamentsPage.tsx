@@ -4,13 +4,30 @@ import { TournamentApiClient, type RoundMode, type TournamentFormat, type Tourna
 
 const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
 
+type ManagedPlayer = {
+  id: string;
+  displayName: string;
+  membershipStatus: 'CLUB_MEMBER' | 'TRIAL';
+};
+
 export function TournamentsPage() {
   const [tournaments, setTournaments] = useState<TournamentStateDto[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<string>('');
   const [name, setName] = useState('H-Town Cup');
   const [format, setFormat] = useState<TournamentFormat>('SINGLE_ELIMINATION');
-  const [participantsText, setParticipantsText] = useState('Lukas, Mert, Jonas, Timo');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [guestName, setGuestName] = useState('');
+  const [guestPlayers, setGuestPlayers] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const clubPlayers = useMemo<ManagedPlayer[]>(() => {
+    try {
+      const raw = window.localStorage.getItem('htown-players');
+      return raw ? (JSON.parse(raw) as ManagedPlayer[]) : [];
+    } catch {
+      return [];
+    }
+  }, []);
 
   const selectedTournament = useMemo(
     () => tournaments.find((entry) => entry.tournamentId === selectedTournamentId) ?? tournaments[0],
@@ -38,8 +55,23 @@ export function TournamentsPage() {
     void refresh();
   }, []);
 
+  const toggleMember = (nameToToggle: string) => {
+    setSelectedMembers((prev) => prev.includes(nameToToggle) ? prev.filter((entry) => entry !== nameToToggle) : [...prev, nameToToggle]);
+  };
+
+  const addGuest = () => {
+    const trimmed = guestName.trim();
+    if (!trimmed) return;
+    if (guestPlayers.includes(trimmed)) return;
+    setGuestPlayers((prev) => [...prev, trimmed]);
+    setGuestName('');
+  };
+
+  const removeGuest = (nameToRemove: string) => setGuestPlayers((prev) => prev.filter((entry) => entry !== nameToRemove));
+
   const createTournament = async () => {
-    const participants = participantsText.split(',').map((p) => p.trim()).filter(Boolean);
+    const participants = [...selectedMembers, ...guestPlayers];
+
     if (participants.length < 2) {
       setErrorMessage('Mindestens 2 Teilnehmer angeben.');
       return;
@@ -72,17 +104,48 @@ export function TournamentsPage() {
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="rounded-2xl hero-gradient border soft-border p-4">
         <h2 className="text-xl uppercase">Turniere</h2>
-        <p className="text-xs muted-text">Vollständiges Turnierformat, Baum mit Ergebnissen und Vereinshistorie.</p>
+        <p className="text-xs muted-text">Mitglieder einladen + Gastspieler hinzufügen.</p>
       </div>
 
-      <div className="rounded-2xl card-bg border soft-border p-4 space-y-2">
+      <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
         <h3 className="text-sm uppercase">Neues Turnier</h3>
         <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-slate-800 p-2 text-sm" placeholder="Turniername" />
+
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => setFormat('SINGLE_ELIMINATION')} className={`rounded-lg p-2 text-xs ${format === 'SINGLE_ELIMINATION' ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>K.O.</button>
           <button onClick={() => setFormat('ROUND_ROBIN')} className={`rounded-lg p-2 text-xs ${format === 'ROUND_ROBIN' ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>Round Robin</button>
         </div>
-        <textarea value={participantsText} onChange={(e) => setParticipantsText(e.target.value)} className="w-full rounded-lg bg-slate-800 p-2 text-xs" rows={2} placeholder="Teilnehmer, kommagetrennt" />
+
+        <div className="space-y-2">
+          <p className="text-xs muted-text">Vereinsmitglieder einladen</p>
+          <div className="flex flex-wrap gap-2">
+            {clubPlayers.map((player) => (
+              <button
+                key={player.id}
+                onClick={() => toggleMember(player.displayName)}
+                className={`rounded-full px-3 py-1 text-xs ${selectedMembers.includes(player.displayName) ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}
+              >
+                {player.displayName}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs muted-text">Gastspieler</p>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input value={guestName} onChange={(e) => setGuestName(e.target.value)} className="rounded-lg bg-slate-800 p-2 text-xs" placeholder="Gastname eingeben" />
+            <button onClick={addGuest} className="rounded-lg bg-slate-700 px-3 text-xs">Hinzufügen</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {guestPlayers.map((guest) => (
+              <button key={guest} onClick={() => removeGuest(guest)} className="rounded-full bg-amber-900/40 px-3 py-1 text-xs text-amber-200">
+                {guest} ✕
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button onClick={createTournament} className="w-full rounded-xl bg-sky-400 p-2 text-sm font-semibold text-slate-900">Turnier erstellen</button>
       </div>
 

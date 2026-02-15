@@ -18,6 +18,8 @@ type ManagedPlayer = {
 };
 
 const STORAGE_KEY = 'htown-players';
+const SEED_VERSION_KEY = 'htown-player-seed-version';
+const SEED_VERSION = 'v1-force-reset-5';
 
 const SEED_PLAYERS: ManagedPlayer[] = [
   {
@@ -84,11 +86,19 @@ const SEED_PLAYERS: ManagedPlayer[] = [
 
 export function PlayersPage() {
   const [players, setPlayers] = useState<ManagedPlayer[]>(() => {
+    const seedVersion = window.localStorage.getItem(SEED_VERSION_KEY);
+    if (seedVersion !== SEED_VERSION) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_PLAYERS));
+      window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+      return SEED_PLAYERS;
+    }
+
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_PLAYERS));
       return SEED_PLAYERS;
     }
+
     try {
       return JSON.parse(raw) as ManagedPlayer[];
     } catch {
