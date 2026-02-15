@@ -118,13 +118,17 @@ export function MatchLivePage() {
 
   return (
     <section className="space-y-3">
-      <div className="rounded-2xl card-bg p-4">
-        <h2 className="text-base font-semibold">Live Match</h2>
-        <p className="text-xs muted-text mt-1">Mode: {state.mode.replace('_', ' ')}</p>
-        <p className="text-sm mt-2">
-          Throwing: <span className="font-semibold text-sky-400">{activePlayer?.displayName}</span>
-        </p>
-      </div>
+      <article className="hero-gradient rounded-2xl border soft-border p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg uppercase">Match Control</h2>
+            <p className="text-xs muted-text">Mode: {state.mode.replace('_', ' ')} · Match ID: {state.matchId.slice(0, 10)}</p>
+          </div>
+          <div className="rounded-lg bg-slate-800 px-2 py-1 text-xs">
+            Am Zug: <span className="primary-text font-semibold">{activePlayer?.displayName}</span>
+          </div>
+        </div>
+      </article>
 
       <div className="rounded-2xl card-bg p-4 space-y-2">
         {state.players.map((player) => {
@@ -156,7 +160,7 @@ export function MatchLivePage() {
       </div>
 
       <div className="rounded-2xl card-bg p-4 space-y-3">
-        <h3 className="text-sm font-semibold">Throw Entry</h3>
+        <h3 className="text-sm font-semibold uppercase">Throw Entry</h3>
 
         {isCricket ? (
           <>
