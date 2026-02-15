@@ -21,7 +21,7 @@ export const MODE_RULES: ModeRule[] = [
   { id: 'bull-challenge', title: 'Bull Challenge', kind: 'training', rules: 'Festgelegte Anzahl Würfe nur auf Bull. Treffer getrennt auswerten.', trains: 'Zentrumskontrolle, Finish-Vorbereitung.' },
   { id: '20-training', title: '20er-Training', kind: 'training', rules: 'Jede Aufnahme ausschließlich auf die 20 werfen. Ziel sind konstante 60+ Aufnahmen.', trains: 'Standardscoring.' },
   { id: '19-training', title: '19er-Training', kind: 'training', rules: 'Analog zum 20er-Training, aber auf 19.', trains: 'Alternative Scoring-Route.' },
-  { id: 'finish-61-100', title: 'Finish 61–100', kind: 'training', rules: 'Zufällige Restpunkte zwischen 61 und 100 in maximal drei Darts checken.', trains: 'Checkout-Routen.' },
+  { id: 'finish-2-170', title: 'Random Checkout 2–170', kind: 'training', rules: 'Zufällige Restpunkte zwischen 2 und 170 in maximal drei Darts checken (Bogey-Zahlen ausgeschlossen).', trains: 'Checkout-Routen, flexible Rechenwege.' },
   { id: '40-game', title: '40-Punkte-Spiel', kind: 'training', rules: 'Nur D20 zählt. Wer zuerst 40 Punkte über D20 erreicht, gewinnt.', trains: 'Wichtigstes Match-Double.' },
   { id: 'highscore', title: 'Highscore (z. B. 10 Runden)', kind: 'training', rules: 'Feste Anzahl Aufnahmen, alle Punkte zählen. Höchste Gesamtsumme gewinnt.', trains: 'Freies Scoring.' },
   { id: 'halve-it', title: 'Halve-It', kind: 'training', rules: 'Jede Runde neue Zielzahl (z. B. 20, 19, 18, 17, 16, 15, Bull). Kein Treffer führt zur Halbierung des Punktestands.', trains: 'Druckresistenz, Konstanz.' },

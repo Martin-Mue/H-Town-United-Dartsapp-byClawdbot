@@ -39,6 +39,9 @@ const DRILLS: TrainingDrill[] = [
 ];
 
 const LOG_KEY = 'htown-training-log';
+const BOGEY_NUMBERS = new Set([159, 162, 163, 165, 166, 168, 169]);
+const VALID_RANDOM_CHECKOUTS = Array.from({ length: 169 }, (_, i) => i + 2).filter((n) => n <= 170 && !BOGEY_NUMBERS.has(n));
+const pickRandomCheckoutTarget = () => VALID_RANDOM_CHECKOUTS[Math.floor(Math.random() * VALID_RANDOM_CHECKOUTS.length)] ?? 100;
 
 export function TrainingPage() {
   const [selectedDrill, setSelectedDrill] = useState<TrainingDrill | null>(null);
@@ -58,11 +61,15 @@ export function TrainingPage() {
   useEffect(() => {
     if (!selectedDrill) return;
     if (selectedDrill.id === 'finish') setTrainingTarget(121);
-    else if (selectedDrill.id === 'random') setTrainingTarget(61 + Math.floor(Math.random() * 40));
+    else if (selectedDrill.id === 'random') setTrainingTarget(pickRandomCheckoutTarget());
     else if (selectedDrill.id === 'pressure') setTrainingTarget(40);
     else if (selectedDrill.id === 't20') setTrainingTarget(20);
     else if (selectedDrill.id === 'doubles') setTrainingTarget(1);
     else setTrainingTarget(1);
+
+    setTrainingThrows([]);
+    setTrainingMultiplier(1);
+    setTrainingSegment(20);
   }, [selectedDrill]);
 
 
@@ -88,7 +95,7 @@ export function TrainingPage() {
 
   const syncedRules = useMemo(() => {
     const playableGameRules = new Set(['x01-501', 'cricket']);
-    const playableTrainingRules = new Set(['around-clock', 'checkout-121', 't20-100']);
+    const playableTrainingRules = new Set(['around-clock', 'checkout-121', 't20-100', 'finish-2-170']);
 
     return MODE_RULES.map((rule) => {
       const available = rule.kind === 'game' ? playableGameRules.has(rule.id) : playableTrainingRules.has(rule.id);
@@ -129,8 +136,15 @@ export function TrainingPage() {
     const checkoutAttempts = strictMetrics.checkoutAttempts;
     const checkoutsCompleted = strictMetrics.checkoutsCompleted;
     const avgDartsForCheckout = attempts > 0 ? Math.max(1, Math.min(9, Math.round(attempts / Math.max(1, checkoutsCompleted)))) : 9;
-    const scenarioCount = Math.max(1, Math.floor(attempts / 3));
-    const wonScenarios = Math.floor(darts.filter((d) => d.points >= 40).length / 2);
+    const turns = Array.from({ length: Math.ceil(darts.length / 3) }, (_, i) => darts.slice(i * 3, i * 3 + 3)).filter((t) => t.length > 0);
+    const scenarioCount = Math.max(1, turns.length);
+    const wonScenarios = turns.filter((turn) => {
+      const turnTarget = turn[0]?.target ?? 40;
+      const sum = turn.reduce((acc, d) => acc + d.points, 0);
+      const last = turn[turn.length - 1];
+      const validOut = last.mult === 2 || last.base === 50;
+      return sum === turnTarget && validOut;
+    }).length;
     const t20Hits = strictMetrics.t20Hits;
     const t20Darts = attempts;
 
@@ -229,7 +243,7 @@ export function TrainingPage() {
       const sum = turn.reduce((acc, d) => acc + d.points, 0);
       const last = turn[turn.length - 1];
       const validOut = last.mult === 2 || last.base === 50;
-      if (sum === trainingTarget && validOut) setTrainingTarget(61 + Math.floor(Math.random() * 40));
+      if (sum === trainingTarget && validOut) setTrainingTarget(pickRandomCheckoutTarget());
     }
   };
 
@@ -332,7 +346,7 @@ export function TrainingPage() {
             </div>
 
             <button onClick={addTrainingDart} className="w-full rounded bg-slate-800 p-1.5 text-xs">Dart hinzufügen</button>
-            {selectedDrill.id === 'random' && <button onClick={() => setTrainingTarget(61 + Math.floor(Math.random() * 40))} className="w-full rounded bg-slate-800 p-1.5 text-xs">Neue Zufalls-Zielzahl</button>}
+            {selectedDrill.id === 'random' && <button onClick={() => setTrainingTarget(pickRandomCheckoutTarget())} className="w-full rounded bg-slate-800 p-1.5 text-xs">Neue Zufalls-Zielzahl (2-170)</button>}
             <p className="text-[11px] muted-text">Darts: {trainingThrows.length} · Letzter: {trainingThrows.at(-1) ? `${trainingThrows.at(-1)?.base}x${trainingThrows.at(-1)?.mult}` : '—'}</p>
             <p className="text-[11px] muted-text">Je nach Modus wird ein Zielsegment/Zielcheckout vorgegeben und live aktualisiert. Around the Clock endet mit Bull/Bullseye.</p>
             <p className="text-[11px] muted-text mt-1">Nur regelkonforme Treffer zählen als Zieltreffer.</p>
@@ -353,7 +367,7 @@ export function TrainingPage() {
 
           <div className="rounded-lg bg-slate-800 p-2 text-xs muted-text">
             <p>Berechneter Trainingsscore: <span className="primary-text font-semibold">{drillScorePreview ?? "—"}</span>{drillScorePreview !== null ? "/100" : ""}</p>
-            <p className="mt-1">Interpretation: erst nach erfassten Darts sinnvoll. &lt;40 = Trainingsbedarf · 40-70 = solide Basis · &gt;70 = stark.</p>
+            <p className="mt-1">Interpretation: basiert auf erfassten Darts und Modusregeln. &lt;40 = Trainingsbedarf · 40-70 = solide Basis · &gt;70 = stark.</p>
             <p className="text-[11px] muted-text mt-1">Nur regelkonforme Treffer zählen als Zieltreffer.</p>
           </div>
 
