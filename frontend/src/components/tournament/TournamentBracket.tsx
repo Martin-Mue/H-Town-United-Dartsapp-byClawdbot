@@ -23,6 +23,9 @@ export function TournamentBracket({
   onStartMatch: (roundNumber: number, fixtureIndex: number) => void;
 }) {
   const expectedPerRound = deriveExpectedMatchCounts(rounds);
+  const firstRoundCount = expectedPerRound[0] ?? 1;
+  const cardHeightPx = 148;
+  const rowGapPx = 12;
 
   return (
     <div className="overflow-x-auto pb-3">
@@ -33,8 +36,13 @@ export function TournamentBracket({
             round.matches[idx] ?? { homePlayerId: 'TBD', awayPlayerId: 'TBD' },
           );
 
+          const expectedForRound = expectedPerRound[roundIndex] ?? 1;
+          const centerOffsetUnits = Math.max(0, (firstRoundCount / expectedForRound - 1) / 2);
+          const marginTop = centerOffsetUnits * (cardHeightPx + rowGapPx);
+
           return (
-            <div key={round.roundNumber} className="w-[280px] space-y-3">
+            <div key={round.roundNumber} className="w-[280px]" style={{ marginTop }}>
+              <div className="space-y-3">
               <div className="rounded-xl border soft-border hero-gradient p-3">
                 <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
                 <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
@@ -43,7 +51,7 @@ export function TournamentBracket({
               {paddedMatches.map((match, fixtureIndex) => {
                 const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
                 return (
-                  <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative min-h-[130px] rounded-xl border soft-border card-bg p-3">
+                  <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative h-[148px] rounded-xl border soft-border card-bg p-3 flex flex-col justify-between">
                     <div className="space-y-1 text-xs">
                       <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
                       <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
@@ -82,11 +90,12 @@ export function TournamentBracket({
                     {roundIndex > 0 && <div className="pointer-events-none absolute -left-4 top-1/2 h-px w-4 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-4 top-1/2 h-px w-4 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && fixtureIndex % 2 === 0 && fixtureIndex + 1 < paddedMatches.length && (
-                      <div className="pointer-events-none absolute -right-4 top-1/2 h-[calc(100%+0.75rem)] w-px bg-slate-600" />
+                      <div className="pointer-events-none absolute -right-4 top-1/2 h-[calc(100%+0.75rem)] w-px bg-slate-500" />
                     )}
                   </div>
                 );
               })}
+              </div>
             </div>
           );
         })}
