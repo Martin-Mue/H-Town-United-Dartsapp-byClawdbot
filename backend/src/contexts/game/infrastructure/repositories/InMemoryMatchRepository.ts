@@ -14,4 +14,9 @@ export class InMemoryMatchRepository implements MatchRepository {
   async findById(matchId: string): Promise<DartsMatchAggregate | null> {
     return this.store.get(matchId) ?? null;
   }
+
+  /** Returns all known matches from local in-memory store. */
+  async findAll(): Promise<DartsMatchAggregate[]> {
+    return [...this.store.values()];
+  }
 }

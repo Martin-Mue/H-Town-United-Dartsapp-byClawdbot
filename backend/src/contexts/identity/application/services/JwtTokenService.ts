@@ -1,4 +1,4 @@
-import jwt from '@fastify/jwt';
+import jwt from 'jsonwebtoken';
 
 /** Provides JWT generation and verification operations for authenticated sessions. */
 export class JwtTokenService {
@@ -6,7 +6,11 @@ export class JwtTokenService {
 
   /** Signs an access token for authenticated user identity. */
   public signAccessToken(subjectUserId: string): string {
-    const signer = jwt({ secret: this.secret });
-    return signer.sign({ sub: subjectUserId, scope: 'platform:user' }, { expiresIn: '12h' });
+    return jwt.sign({ scope: 'platform:user' }, this.secret, {
+      subject: subjectUserId,
+      expiresIn: '12h',
+      issuer: 'htown-united-platform',
+      audience: 'htown-united-mobile',
+    });
   }
 }

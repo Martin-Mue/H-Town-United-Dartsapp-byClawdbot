@@ -7,4 +7,7 @@ export interface MatchRepository {
 
   /** Finds a match aggregate by id or returns null when not found. */
   findById(matchId: string): Promise<DartsMatchAggregate | null>;
+
+  /** Returns all known matches, primarily for local admin and debugging endpoints. */
+  findAll(): Promise<DartsMatchAggregate[]>;
 }
