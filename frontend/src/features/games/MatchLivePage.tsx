@@ -19,6 +19,14 @@ type HistoryEntry = {
   resultLabel: string;
 };
 
+type ManagedPlayer = {
+  id: string;
+  displayName: string;
+  currentAverage?: number;
+  checkoutPercentage?: number;
+  pressurePerformanceIndex?: number;
+};
+
 export function MatchLivePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,6 +46,7 @@ export function MatchLivePage() {
   const [turnCounter, setTurnCounter] = useState(0);
   const [dartCounter, setDartCounter] = useState(0);
   const [matchSettings, setMatchSettings] = useState<{ bullOffEnabled?: boolean; bullOffLimitType?: 'turns' | 'darts'; bullOffLimitValue?: number }>({});
+  const [preMatchSeen, setPreMatchSeen] = useState(false);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -59,6 +68,66 @@ export function MatchLivePage() {
       setMatchSettings({});
     }
   }, [matchId]);
+
+
+  const localPlayers = useMemo<ManagedPlayer[]>(() => {
+    try {
+      const raw = window.localStorage.getItem('htown-players');
+      return raw ? (JSON.parse(raw) as ManagedPlayer[]) : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const history = useMemo<HistoryEntry[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(MATCH_HISTORY_KEY);
+      return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const preMatchInsights = useMemo(() => {
+    if (!state) return null;
+    const players = state.players;
+    const a = players[0];
+    const b = players[1];
+
+    const headToHead = a && b
+      ? history.filter((m) => {
+          const ids = m.players.map((p) => p.id);
+          const names = m.players.map((p) => p.name.toLowerCase());
+          const hasA = ids.includes(a.playerId) || names.includes(a.displayName.toLowerCase());
+          const hasB = ids.includes(b.playerId) || names.includes(b.displayName.toLowerCase());
+          return hasA && hasB;
+        })
+      : [];
+
+    const winsA = a ? headToHead.filter((m) => m.winnerPlayerId === a.playerId || (m.winnerName ?? '').toLowerCase() === a.displayName.toLowerCase()).length : 0;
+    const winsB = b ? headToHead.filter((m) => m.winnerPlayerId === b.playerId || (m.winnerName ?? '').toLowerCase() === b.displayName.toLowerCase()).length : 0;
+
+    const tips = players.map((p) => {
+      const profile = localPlayers.find((lp) => lp.id === p.playerId || lp.displayName.toLowerCase() === p.displayName.toLowerCase());
+      const avg = profile?.currentAverage ?? p.average;
+      const checkout = profile?.checkoutPercentage ?? p.checkoutPercentage;
+      const pressure = profile?.pressurePerformanceIndex ?? 50;
+
+      const tipList: string[] = [];
+      if (avg >= 65) tipList.push('Früh Druck aufbauen: erste 2 Darts auf Scoring-Feld priorisieren.');
+      else tipList.push('Konstante Single-Visits sichern, keine erzwungenen Triple-Risiken in Dart 3.');
+
+      if (checkout >= 35) tipList.push('Checkout-Wege aggressiv callen (2-Dart-Finish früh vorbereiten).');
+      else tipList.push('Checkout über Lieblingsdoppel vorbereiten (z. B. D16/D20 Route).');
+
+      if (pressure >= 70) tipList.push('In engen Legs Tempo kontrollieren und Gegner auf Decider zwingen.');
+      else tipList.push('Bei Rest <100 bewusst auf sichere Setups statt Hero-Shots gehen.');
+
+      return { playerId: p.playerId, displayName: p.displayName, tipList };
+    });
+
+    return { headToHeadMatches: headToHead.length, winsA, winsB, tips };
+  }, [state, history, localPlayers]);
 
   const isCricket = state?.mode === 'CRICKET';
   const active = useMemo(() => state?.players.find((p) => p.playerId === state.activePlayerId), [state]);
@@ -217,7 +286,41 @@ export function MatchLivePage() {
     navigate(tournamentId ? '/tournaments' : '/match-summary');
   };
 
+
   if (!state) return <p className="card-bg rounded-xl p-4">Loading…</p>;
+
+  if (!preMatchSeen) {
+    return (
+      <section className="space-y-4 animate-[fadeIn_.25s_ease]">
+        <div className="hero-gradient rounded-2xl border soft-border p-4">
+          <p className="text-xs muted-text">Matchup Preview</p>
+          <h2 className="text-xl uppercase">{state.players.map((p) => p.displayName).join(' vs ')}</h2>
+          <p className="text-xs muted-text mt-1">{state.mode.replace('_', ' ')} · Vor dem Anwurf</p>
+        </div>
+
+        {preMatchInsights && state.players.length >= 2 && (
+          <div className="rounded-2xl card-bg border soft-border p-4">
+            <h3 className="text-sm uppercase mb-2">Direktvergleich</h3>
+            <p className="text-xs">Bisherige Duelle: <span className="primary-text font-semibold">{preMatchInsights.headToHeadMatches}</span></p>
+            <p className="text-xs mt-1">Bilanz: <span className="font-semibold">{state.players[0].displayName} {preMatchInsights.winsA}</span> : <span className="font-semibold">{preMatchInsights.winsB} {state.players[1].displayName}</span></p>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {preMatchInsights?.tips.map((entry) => (
+            <article key={entry.playerId} className="rounded-2xl card-bg border soft-border p-4">
+              <h4 className="text-sm uppercase mb-2">Gameplan · {entry.displayName}</h4>
+              <ul className="space-y-1 text-xs list-disc pl-4">
+                {entry.tipList.map((tip) => <li key={tip}>{tip}</li>)}
+              </ul>
+            </article>
+          ))}
+        </div>
+
+        <button onClick={() => setPreMatchSeen(true)} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900">Match starten</button>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-[70vh] flex flex-col items-center gap-4">
