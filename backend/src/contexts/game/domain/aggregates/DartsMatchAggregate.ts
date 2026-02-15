@@ -133,6 +133,13 @@ export class DartsMatchAggregate extends AggregateRoot {
     return this.winnerPlayerId;
   }
 
+  /** Force-resolves winner via bull-off decision when configured by caller flow. */
+  public resolveBullOffWinner(winnerPlayerId: string): void {
+    if (this.winnerPlayerId) return;
+    if (!this.playerOrder.includes(winnerPlayerId)) throw new Error('Bull-off winner is not part of this match.');
+    this.winnerPlayerId = winnerPlayerId;
+  }
+
   /** Produces compact post-match summary for analytics and reporting exports. */
   public getMatchSummary(): {
     winnerPlayerId: string | null;

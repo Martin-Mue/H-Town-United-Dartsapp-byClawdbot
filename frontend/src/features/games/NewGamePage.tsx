@@ -19,6 +19,9 @@ export function NewGamePage() {
   const [playerOneCheckout, setPlayerOneCheckout] = useState<CheckoutMode>('DOUBLE_OUT');
   const [playerTwoCheckout, setPlayerTwoCheckout] = useState<CheckoutMode>('DOUBLE_OUT');
   const [showClubPick, setShowClubPick] = useState(false);
+  const [bullOffEnabled, setBullOffEnabled] = useState(false);
+  const [bullOffLimitType, setBullOffLimitType] = useState<'turns' | 'darts'>('turns');
+  const [bullOffLimitValue, setBullOffLimitValue] = useState(20);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -53,6 +56,7 @@ export function NewGamePage() {
       });
 
       window.localStorage.setItem('htown-active-match-id', state.matchId);
+      window.localStorage.setItem(`htown-match-settings-${state.matchId}`, JSON.stringify({ bullOffEnabled, bullOffLimitType, bullOffLimitValue }));
       navigate(`/match/${state.matchId}`);
     } catch {
       setErrorMessage('Match creation failed. Bitte Backend auf localhost:8080 starten.');
@@ -139,6 +143,23 @@ export function NewGamePage() {
         <h3 className="text-sm uppercase">Checkout</h3>
         <CheckoutSelector label={playerOneName || 'Spieler 1'} value={playerOneCheckout} onChange={setPlayerOneCheckout} />
         <CheckoutSelector label={playerTwoName || 'Spieler 2'} value={playerTwoCheckout} onChange={setPlayerTwoCheckout} />
+      </div>
+
+
+      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
+        <h3 className="text-sm uppercase">Ausbullen-Regel</h3>
+        <button onClick={() => setBullOffEnabled((v) => !v)} className="w-full rounded-lg bg-slate-800 p-2 text-xs text-left">
+          Ausbullen aktiviert: <span className="primary-text font-semibold">{bullOffEnabled ? 'Ja' : 'Nein'}</span>
+        </button>
+        {bullOffEnabled && (
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <select value={bullOffLimitType} onChange={(e) => setBullOffLimitType(e.target.value as 'turns' | 'darts')} className="rounded bg-slate-800 p-2">
+              <option value="turns">nach Runden</option>
+              <option value="darts">nach Darts</option>
+            </select>
+            <input type="number" min={1} value={bullOffLimitValue} onChange={(e) => setBullOffLimitValue(Number(e.target.value || 1))} className="rounded bg-slate-800 p-2" />
+          </div>
+        )}
       </div>
 
       {errorMessage && <p className="rounded-xl bg-red-900/40 p-3 text-sm text-red-100">{errorMessage}</p>}

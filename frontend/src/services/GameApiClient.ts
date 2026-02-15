@@ -82,6 +82,18 @@ export class GameApiClient {
     return response.json();
   }
 
+
+  /** Resolves a match winner after bull-off decision. */
+  public async registerBullOffWinner(matchId: string, payload: { winnerPlayerId: string }): Promise<MatchStateDto> {
+    const response = await fetch(`${this.baseUrl}/api/game/matches/${matchId}/bull-off-winner`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to register bull-off winner.');
+    return response.json();
+  }
+
   /** Loads one match state for live match continuation. */
   public async getMatch(matchId: string): Promise<MatchStateDto> {
     const response = await fetch(`${this.baseUrl}/api/game/matches/${matchId}`);

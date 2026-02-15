@@ -79,5 +79,15 @@ export class GameController {
       });
       return reply.code(200).send(state);
     });
+
+    app.post('/api/game/matches/:matchId/bull-off-winner', async (request, reply) => {
+      const params = z.object({ matchId: z.string() }).parse(request.params);
+      const body = z.object({ winnerPlayerId: z.string().min(1) }).parse(request.body);
+      const state = await this.matchApplicationService.registerBullOffWinner({
+        matchId: params.matchId,
+        winnerPlayerId: body.winnerPlayerId,
+      });
+      return reply.code(200).send(state);
+    });
   }
 }

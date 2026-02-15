@@ -80,10 +80,10 @@ export class TournamentApplicationService {
     byePlacement: 'ROUND_1' | 'DISTRIBUTED' | 'PLAY_IN',
   ): TournamentRound[] {
     const participants = [...participantsInput];
-    const targetSize = Math.max(2, 2 ** Math.ceil(Math.log2(Math.max(2, participants.length))));
-    const byeCount = targetSize - participants.length;
 
-    const seeded = this.applyByePlacement(participants, byeCount, byePlacement);
+    const seeded = byePlacement === 'PLAY_IN'
+      ? this.buildPlayInSeed(participants)
+      : this.buildClassicSeed(participants, byePlacement);
 
     const rounds: TournamentRound[] = [];
     let currentSize = seeded.length;
@@ -103,7 +103,34 @@ export class TournamentApplicationService {
     return rounds;
   }
 
-  private applyByePlacement(participants: string[], byeCount: number, byePlacement: 'ROUND_1' | 'DISTRIBUTED' | 'PLAY_IN'): string[] {
+  private buildPlayInSeed(participants: string[]): string[] {
+    const n = participants.length;
+    const lowerPower = 2 ** Math.floor(Math.log2(Math.max(2, n)));
+    if (n <= lowerPower) return this.buildClassicSeed(participants, 'ROUND_1');
+
+    const playInMatchCount = n - lowerPower;
+    const directCount = n - playInMatchCount * 2;
+    const directPlayers = participants.slice(0, directCount);
+    const playInPlayers = participants.slice(directCount);
+
+    const seeded: string[] = [];
+
+    // Direct qualifiers auto-advance via explicit BYE fixtures in Play-In round.
+    for (const player of directPlayers) {
+      seeded.push(player, 'BYE');
+    }
+
+    // Real play-in fixtures for remaining players.
+    for (let i = 0; i < playInMatchCount; i += 1) {
+      seeded.push(playInPlayers[i * 2] ?? 'BYE', playInPlayers[i * 2 + 1] ?? 'BYE');
+    }
+
+    return seeded;
+  }
+
+  private buildClassicSeed(participants: string[], byePlacement: 'ROUND_1' | 'DISTRIBUTED' | 'PLAY_IN'): string[] {
+    const targetSize = Math.max(2, 2 ** Math.ceil(Math.log2(Math.max(2, participants.length))));
+    const byeCount = targetSize - participants.length;
     if (byeCount <= 0) return participants;
 
     if (byePlacement === 'DISTRIBUTED') {
@@ -125,12 +152,6 @@ export class TournamentApplicationService {
       return result;
     }
 
-    if (byePlacement === 'PLAY_IN') {
-      // simplified: currently modeled as round-1 byes until dedicated play-in tree is introduced.
-      return [...participants, ...Array.from({ length: byeCount }, () => 'BYE')];
-    }
-
-    // ROUND_1 default
     return [...participants, ...Array.from({ length: byeCount }, () => 'BYE')];
   }
 

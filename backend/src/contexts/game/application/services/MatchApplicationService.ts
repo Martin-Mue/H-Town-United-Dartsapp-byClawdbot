@@ -80,6 +80,20 @@ export class MatchApplicationService {
     return this.toStateDto(match);
   }
 
+
+  /** Resolves match by bull-off winner selection and applies ELO once. */
+  public async registerBullOffWinner(request: { matchId: string; winnerPlayerId: string }): Promise<MatchStateDto> {
+    const match = await this.matchRepository.findById(request.matchId);
+    if (!match) throw new Error('Match was not found.');
+
+    const previousWinner = match.getWinnerPlayerId();
+    match.resolveBullOffWinner(request.winnerPlayerId);
+    this.applyEloIfMatchCompleted(match, previousWinner);
+
+    await this.matchRepository.save(match);
+    return this.toStateDto(match);
+  }
+
   /** Returns current read model representation of one match by id. */
   public async getMatchState(matchId: string): Promise<MatchStateDto> {
     const match = await this.matchRepository.findById(matchId);

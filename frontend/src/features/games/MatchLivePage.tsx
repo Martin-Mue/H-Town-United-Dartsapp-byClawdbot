@@ -35,6 +35,9 @@ export function MatchLivePage() {
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraHint, setCameraHint] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [turnCounter, setTurnCounter] = useState(0);
+  const [dartCounter, setDartCounter] = useState(0);
+  const [matchSettings, setMatchSettings] = useState<{ bullOffEnabled?: boolean; bullOffLimitType?: 'turns' | 'darts'; bullOffLimitValue?: number }>({});
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -44,6 +47,17 @@ export function MatchLivePage() {
   useEffect(() => {
     if (!matchId) return;
     apiClient.getMatch(matchId).then(setState).catch(() => setErrorMessage('Match konnte nicht geladen werden.'));
+  }, [matchId]);
+
+
+  useEffect(() => {
+    if (!matchId) return;
+    try {
+      const raw = window.localStorage.getItem(`htown-match-settings-${matchId}`);
+      setMatchSettings(raw ? JSON.parse(raw) : {});
+    } catch {
+      setMatchSettings({});
+    }
   }, [matchId]);
 
   const isCricket = state?.mode === 'CRICKET';
@@ -139,6 +153,7 @@ export function MatchLivePage() {
 
   const submitTurn = async () => {
     if (!state) return;
+    if (bullOffRequired) { setErrorMessage('Ausbullen erforderlich. Bitte Sieger per Bull-Off festlegen.'); return; }
     setSubmitting(true);
     setErrorMessage(null);
 
@@ -171,6 +186,8 @@ export function MatchLivePage() {
       }
 
       setState(nextState);
+      setTurnCounter((t) => t + 1);
+      setDartCounter((d) => d + (isCricket ? pendingCricket.length : pendingX01.length));
       clearTurn();
 
       if (nextState.winnerPlayerId) {
@@ -181,6 +198,23 @@ export function MatchLivePage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+
+  const bullOffRequired = Boolean(
+    !state?.winnerPlayerId &&
+    matchSettings.bullOffEnabled &&
+    ((matchSettings.bullOffLimitType === 'turns' && turnCounter >= (matchSettings.bullOffLimitValue ?? 0)) ||
+      (matchSettings.bullOffLimitType === 'darts' && dartCounter >= (matchSettings.bullOffLimitValue ?? 0))),
+  );
+
+  const resolveBullOff = async (winnerPlayerId: string) => {
+    if (!state) return;
+    const next = await apiClient.registerBullOffWinner(state.matchId, { winnerPlayerId });
+    setState(next);
+    saveHistory(next);
+    await syncTournamentResultIfNeeded(next);
+    navigate(tournamentId ? '/tournaments' : '/match-summary');
   };
 
   if (!state) return <p className="card-bg rounded-xl p-4">Loading…</p>;
@@ -258,6 +292,19 @@ export function MatchLivePage() {
             {submitting ? 'Speichern…' : '3-Dart Turn eintragen'}
           </button>
         </div>
+
+        {bullOffRequired && (
+          <div className="rounded-lg border border-amber-400/40 bg-amber-900/20 p-3 space-y-2">
+            <p className="text-xs text-amber-100">Limit erreicht ({matchSettings.bullOffLimitType === 'turns' ? `${turnCounter} Runden` : `${dartCounter} Darts`}). Bitte Ausbullen-Sieger wählen.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {state.players.map((p) => (
+                <button key={p.playerId} onClick={() => void resolveBullOff(p.playerId)} className="rounded bg-amber-300 p-2 text-xs font-semibold text-slate-900">
+                  {p.displayName} gewinnt Ausbullen
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {errorMessage && <p className="rounded bg-red-900/40 p-2 text-xs text-red-100">{errorMessage}</p>}
       </div>
