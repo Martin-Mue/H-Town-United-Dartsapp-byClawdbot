@@ -22,56 +22,83 @@ export function TournamentBracket({
   onSelectWinner: (roundNumber: number, fixtureIndex: number, winner: string, resultLabel?: string) => void;
   onStartMatch: (roundNumber: number, fixtureIndex: number) => void;
 }) {
+  const expectedPerRound = deriveExpectedMatchCounts(rounds);
+
   return (
     <div className="overflow-x-auto pb-3">
       <div className="flex items-start gap-4 min-w-max">
-        {rounds.map((round, roundIndex) => (
-          <div key={round.roundNumber} className="w-[280px] space-y-3">
-            <div className="rounded-xl border soft-border hero-gradient p-3">
-              <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
-              <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
-            </div>
+        {rounds.map((round, roundIndex) => {
+          const expectedCount = expectedPerRound[roundIndex] ?? round.matches.length;
+          const paddedMatches = Array.from({ length: expectedCount }, (_, idx) =>
+            round.matches[idx] ?? { homePlayerId: 'TBD', awayPlayerId: 'TBD' },
+          );
 
-            {round.matches.map((match, fixtureIndex) => {
-              const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
-              return (
-                <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative rounded-xl border soft-border card-bg p-3">
-                  <div className="space-y-1 text-xs">
-                    <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
-                    <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
+          return (
+            <div key={round.roundNumber} className="w-[280px] space-y-3">
+              <div className="rounded-xl border soft-border hero-gradient p-3">
+                <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
+                <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
+              </div>
+
+              {paddedMatches.map((match, fixtureIndex) => {
+                const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
+                return (
+                  <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative rounded-xl border soft-border card-bg p-3">
+                    <div className="space-y-1 text-xs">
+                      <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
+                      <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
+                    </div>
+
+                    {match.winnerPlayerId ? (
+                      <p className="mt-2 rounded bg-emerald-900/40 px-2 py-1 text-[11px] text-emerald-200">
+                        Ergebnis: {match.winnerPlayerId}{match.resultLabel ? ` (${match.resultLabel})` : ''}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="mt-2 grid grid-cols-2 gap-1">
+                          <button
+                            onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)}
+                            disabled={!playable}
+                            className="rounded bg-slate-800 p-1 text-[11px] disabled:opacity-40"
+                          >
+                            {match.homePlayerId}
+                          </button>
+                          <button
+                            onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)}
+                            disabled={!playable}
+                            className="rounded bg-slate-800 p-1 text-[11px] disabled:opacity-40"
+                          >
+                            {match.awayPlayerId}
+                          </button>
+                        </div>
+                        {playable && (
+                          <button onClick={() => onStartMatch(round.roundNumber, fixtureIndex)} className="mt-2 w-full rounded bg-sky-400 p-1.5 text-[11px] font-semibold text-slate-900">
+                            Match starten
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-4 top-1/2 h-px w-4 bg-slate-600" />}
                   </div>
-
-                  {match.winnerPlayerId ? (
-                    <p className="mt-2 rounded bg-emerald-900/40 px-2 py-1 text-[11px] text-emerald-200">
-                      Ergebnis: {match.winnerPlayerId}{match.resultLabel ? ` (${match.resultLabel})` : ''}
-                    </p>
-                  ) : (
-                    <>
-                      <div className="mt-2 grid grid-cols-2 gap-1">
-                        <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
-                          {match.homePlayerId}
-                        </button>
-                        <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
-                          {match.awayPlayerId}
-                        </button>
-                      </div>
-                      {playable && (
-                        <button onClick={() => onStartMatch(round.roundNumber, fixtureIndex)} className="mt-2 w-full rounded bg-sky-400 p-1.5 text-[11px] font-semibold text-slate-900">
-                          Match starten
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-4 top-1/2 h-px w-4 bg-slate-600" />}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+function deriveExpectedMatchCounts(rounds: TournamentRound[]): number[] {
+  if (rounds.length === 0) return [];
+  const firstRoundCount = Math.max(1, rounds[0].matches.length);
+  const counts: number[] = [firstRoundCount];
+  for (let i = 1; i < rounds.length; i += 1) {
+    counts.push(Math.max(1, Math.ceil(counts[i - 1] / 2)));
+  }
+  return counts;
 }
 
 function PlayerLine({ name, winner }: { name: string; winner: boolean }) {
