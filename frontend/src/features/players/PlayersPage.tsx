@@ -7,6 +7,11 @@ type MembershipStatus = 'CLUB_MEMBER' | 'TRIAL';
 type ManagedPlayer = {
   id: string;
   displayName: string;
+  nickname?: string;
+  throwingArm?: 'RIGHT' | 'LEFT' | 'BOTH';
+  gripStyle?: string;
+  dartWeightGrams?: number;
+  seasonsPlayed?: number;
   membershipStatus: MembershipStatus;
   preferredCheckoutMode: CheckoutMode;
   notes: string;
@@ -104,6 +109,11 @@ export function PlayersPage() {
   const [nameInput, setNameInput] = useState('');
   const [modeInput, setModeInput] = useState<CheckoutMode>('DOUBLE_OUT');
   const [statusInput, setStatusInput] = useState<MembershipStatus>('CLUB_MEMBER');
+  const [nicknameInput, setNicknameInput] = useState('');
+  const [throwingArmInput, setThrowingArmInput] = useState<'RIGHT' | 'LEFT' | 'BOTH'>('RIGHT');
+  const [gripStyleInput, setGripStyleInput] = useState('');
+  const [dartWeightInput, setDartWeightInput] = useState('');
+  const [seasonsPlayedInput, setSeasonsPlayedInput] = useState('0');
   const [avatarInput, setAvatarInput] = useState('');
   const [sourcePhotoInput, setSourcePhotoInput] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
@@ -129,6 +139,11 @@ export function PlayersPage() {
         id: `p-${crypto.randomUUID().slice(0, 8)}`,
         displayName: trimmedName,
         membershipStatus: statusInput,
+        nickname: nicknameInput.trim() || undefined,
+        throwingArm: throwingArmInput,
+        gripStyle: gripStyleInput.trim() || undefined,
+        dartWeightGrams: dartWeightInput ? Number(dartWeightInput) : undefined,
+        seasonsPlayed: Number(seasonsPlayedInput || 0),
         preferredCheckoutMode: modeInput,
         notes: '',
         currentAverage: 0,
@@ -143,6 +158,11 @@ export function PlayersPage() {
     setNameInput('');
     setModeInput('DOUBLE_OUT');
     setStatusInput('CLUB_MEMBER');
+    setNicknameInput('');
+    setThrowingArmInput('RIGHT');
+    setGripStyleInput('');
+    setDartWeightInput('');
+    setSeasonsPlayedInput('0');
     setAvatarInput('');
     setSourcePhotoInput('');
     setShowModal(false);
@@ -238,7 +258,7 @@ export function PlayersPage() {
             <div className="flex items-center gap-3 min-w-0">
               <img src={player.avatarUrl || '/branding/h-town-united-logo-tree.jpg'} className="h-12 w-12 rounded-lg object-cover" />
               <div className="min-w-0">
-                <p className="font-semibold truncate">{player.displayName}</p>
+                <p className="font-semibold truncate">{player.displayName}{player.nickname ? ` "${player.nickname}"` : ''}</p>
                 <p className="text-xs muted-text">Ø {player.currentAverage} · Checkout {player.checkoutPercentage}% · {player.total180s}x 180</p>
                 <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="mt-1 text-[11px] primary-text flex items-center gap-1">
                   <Sparkles size={12} /> KI-Bild generieren
@@ -264,6 +284,19 @@ export function PlayersPage() {
             </div>
 
             <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Vor- und Nachname" className="w-full rounded-xl bg-slate-800 border border-sky-400/60 p-3" />
+            <input value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder="Spitzname (optional)" className="w-full rounded-xl bg-slate-800 p-3" />
+            <div className="grid grid-cols-2 gap-2">
+              <select value={throwingArmInput} onChange={(e) => setThrowingArmInput(e.target.value as 'RIGHT' | 'LEFT' | 'BOTH')} className="rounded-xl bg-slate-800 p-3 text-sm">
+                <option value="RIGHT">Wurfarm: Rechts</option>
+                <option value="LEFT">Wurfarm: Links</option>
+                <option value="BOTH">Wurfarm: Beidseitig</option>
+              </select>
+              <input value={gripStyleInput} onChange={(e) => setGripStyleInput(e.target.value)} placeholder="Gripart (optional)" className="rounded-xl bg-slate-800 p-3 text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="number" min={8} step={1} value={dartWeightInput} onChange={(e) => setDartWeightInput(e.target.value)} placeholder="Dartgewicht g" className="rounded-xl bg-slate-800 p-3 text-sm" />
+              <input type="number" min={0} step={1} value={seasonsPlayedInput} onChange={(e) => setSeasonsPlayedInput(e.target.value)} placeholder="Gespielte Saisons" className="rounded-xl bg-slate-800 p-3 text-sm" />
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <button onClick={generateAvatarForModal} disabled={isGenerating} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1 disabled:opacity-60">

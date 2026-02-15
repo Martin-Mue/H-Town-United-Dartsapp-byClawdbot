@@ -83,6 +83,18 @@ export function PlayerProfilePage() {
         <p className="text-xs muted-text mt-1">{player.membershipStatus === 'TRIAL' ? 'Schnuppermodus' : 'Vereinsmitglied'}</p>
       </div>
 
+
+      <div className="rounded-2xl card-bg border soft-border p-4">
+        <h3 className="text-sm uppercase mb-2">Spieler-Steckbrief</h3>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <Stat title="Spitzname" value={String(player.nickname ?? '—')} />
+          <Stat title="Wurfarm" value={String(player.throwingArm === 'LEFT' ? 'Links' : player.throwingArm === 'BOTH' ? 'Beidseitig' : player.throwingArm ? 'Rechts' : '—')} />
+          <Stat title="Gripart" value={String(player.gripStyle ?? '—')} />
+          <Stat title="Dartgewicht" value={player.dartWeightGrams ? `${player.dartWeightGrams} g` : '—'} />
+          <Stat title="Gespielte Saisons" value={String(player.seasonsPlayed ?? 0)} />
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 text-xs">
         <Stat title="3-Dart Average" value={String(player.currentAverage ?? 0)} />
         <Stat title="Checkout-Quote (%)" value={String(player.checkoutPercentage ?? 0)} />

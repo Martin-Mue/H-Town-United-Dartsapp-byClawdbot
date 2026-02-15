@@ -1,6 +1,11 @@
 export type ManagedPlayer = {
   id: string;
   displayName: string;
+  nickname?: string;
+  throwingArm?: 'RIGHT' | 'LEFT' | 'BOTH';
+  gripStyle?: string;
+  dartWeightGrams?: number;
+  seasonsPlayed?: number;
   membershipStatus?: 'CLUB_MEMBER' | 'TRIAL';
   currentAverage?: number;
   checkoutPercentage?: number;
