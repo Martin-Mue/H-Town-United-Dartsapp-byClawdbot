@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Search, UserPlus, X, Sparkles, Upload, Camera, CameraOff } from 'lucide-react';
+import { Search, UserPlus, X, Sparkles, Upload, Camera, CameraOff, Loader2 } from 'lucide-react';
 
 type CheckoutMode = 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
 type MembershipStatus = 'CLUB_MEMBER' | 'TRIAL';
@@ -29,9 +29,48 @@ const SEED_PLAYERS: ManagedPlayer[] = [
   { id: 'seed-ben', displayName: 'Ben Albrecht', membershipStatus: 'TRIAL', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Schnuppermodus, strong on T20 reps.', currentAverage: 54, checkoutPercentage: 25, pressurePerformanceIndex: 57, total180s: 3, avatarUrl: '' },
 ];
 
-function generateHtownAvatar(displayName: string, seed = 'htown'): string {
+async function generateHtownAvatar(displayName: string, seed = 'htown'): Promise<string> {
   const prompt = encodeURIComponent(`professional darts player portrait, H-Town United dart jersey, dark arena lights, realistic, ${displayName}`);
-  return `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&seed=${encodeURIComponent(`${seed}-${displayName}`)}`;
+  const url = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&seed=${encodeURIComponent(`${seed}-${displayName}`)}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('image generation failed');
+    const blob = await response.blob();
+    return await blobToDataUrl(blob);
+  } catch {
+    return '';
+  }
+}
+
+async function stylizeFromSourceImage(sourceDataUrl: string): Promise<string> {
+  const img = await loadImage(sourceDataUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = 768;
+  canvas.height = 768;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return sourceDataUrl;
+
+  const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const dx = (canvas.width - drawW) / 2;
+  const dy = (canvas.height - drawH) / 2;
+
+  ctx.filter = 'contrast(1.12) saturate(1.15)';
+  ctx.drawImage(img, dx, dy, drawW, drawH);
+  ctx.filter = 'none';
+
+  const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  grad.addColorStop(0, 'rgba(0,255,210,0.12)');
+  grad.addColorStop(1, 'rgba(0,80,255,0.18)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = 'rgba(0,255,220,0.45)';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+
+  return canvas.toDataURL('image/jpeg', 0.92);
 }
 
 export function PlayersPage() {
@@ -66,7 +105,9 @@ export function PlayersPage() {
   const [modeInput, setModeInput] = useState<CheckoutMode>('DOUBLE_OUT');
   const [statusInput, setStatusInput] = useState<MembershipStatus>('CLUB_MEMBER');
   const [avatarInput, setAvatarInput] = useState('');
+  const [sourcePhotoInput, setSourcePhotoInput] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
@@ -75,9 +116,12 @@ export function PlayersPage() {
 
   const filtered = useMemo(() => players.filter((p) => p.displayName.toLowerCase().includes(query.toLowerCase())), [players, query]);
 
-  const addPlayer = () => {
+  const addPlayer = async () => {
     const trimmedName = nameInput.trim();
     if (!trimmedName) return;
+
+    let finalAvatar = avatarInput;
+    if (!finalAvatar) finalAvatar = await generateHtownAvatar(trimmedName, 'create');
 
     persist([
       ...players,
@@ -91,7 +135,7 @@ export function PlayersPage() {
         checkoutPercentage: 20,
         pressurePerformanceIndex: 50,
         total180s: 0,
-        avatarUrl: avatarInput || generateHtownAvatar(trimmedName, 'create'),
+        avatarUrl: finalAvatar || sourcePhotoInput || '',
       },
     ]);
 
@@ -100,23 +144,38 @@ export function PlayersPage() {
     setModeInput('DOUBLE_OUT');
     setStatusInput('CLUB_MEMBER');
     setAvatarInput('');
+    setSourcePhotoInput('');
     setShowModal(false);
   };
 
-  const generateAvatarForModal = () => {
+  const generateAvatarForModal = async () => {
     const trimmedName = nameInput.trim();
     if (!trimmedName) return;
-    setAvatarInput(generateHtownAvatar(trimmedName, 'modal'));
+    setIsGenerating(true);
+    try {
+      if (sourcePhotoInput) {
+        const styled = await stylizeFromSourceImage(sourcePhotoInput);
+        setAvatarInput(styled);
+      } else {
+        const generated = await generateHtownAvatar(trimmedName, 'modal');
+        setAvatarInput(generated);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const generateAvatarForPlayer = (playerId: string, displayName: string) => {
-    persist(players.map((p) => (p.id === playerId ? { ...p, avatarUrl: generateHtownAvatar(displayName, playerId) } : p)));
+  const generateAvatarForPlayer = async (playerId: string, displayName: string) => {
+    const generated = await generateHtownAvatar(displayName, playerId);
+    if (!generated) return;
+    persist(players.map((p) => (p.id === playerId ? { ...p, avatarUrl: generated } : p)));
   };
 
   const onUploadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const dataUrl = await fileToDataUrl(file);
+    setSourcePhotoInput(dataUrl);
     setAvatarInput(dataUrl);
   };
 
@@ -147,7 +206,9 @@ export function PlayersPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    setAvatarInput(canvas.toDataURL('image/jpeg', 0.9));
+    const captured = canvas.toDataURL('image/jpeg', 0.9);
+    setSourcePhotoInput(captured);
+    setAvatarInput(captured);
   };
 
   const stopCamera = () => {
@@ -199,14 +260,14 @@ export function PlayersPage() {
           <div className="w-full max-w-md rounded-2xl border soft-border card-bg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xl uppercase">Neues Mitglied</h3>
-              <button onClick={() => { stopCamera(); setShowModal(false); }}><X size={16} /></button>
+              <button onClick={() => { stopCamera(); setShowModal(false); setSourcePhotoInput(''); setAvatarInput(''); }}><X size={16} /></button>
             </div>
 
             <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Vor- und Nachname" className="w-full rounded-xl bg-slate-800 border border-sky-400/60 p-3" />
 
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={generateAvatarForModal} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
-                <Sparkles size={12} /> KI generieren
+              <button onClick={generateAvatarForModal} disabled={isGenerating} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1 disabled:opacity-60">
+                {isGenerating ? <><Loader2 size={12} className="animate-spin" /> Generiere...</> : <><Sparkles size={12} /> KI generieren</>}
               </button>
               <button onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
                 <Upload size={12} /> Bild hochladen
@@ -227,6 +288,7 @@ export function PlayersPage() {
 
             {avatarInput && <img src={avatarInput} alt="Avatar preview" className="h-32 w-32 mx-auto rounded-xl object-cover border soft-border" />}
             {!avatarInput && <p className="text-[11px] muted-text text-center">Vorschau erscheint hier vor dem Speichern.</p>}
+            <p className="text-[11px] muted-text text-center">Tipp: Erst Foto hochladen/aufnehmen, dann KI generieren für realistischeren H-Town-Look.</p>
 
             <select value={modeInput} onChange={(e) => setModeInput(e.target.value as CheckoutMode)} className="w-full rounded-xl bg-slate-800 p-3">
               <option value="SINGLE_OUT">Single Out</option>
@@ -239,7 +301,7 @@ export function PlayersPage() {
               <option value="TRIAL">Schnuppermodus</option>
             </select>
 
-            <button onClick={addPlayer} className="w-full rounded-xl bg-sky-400 text-slate-900 font-semibold p-3">Mitglied hinzufügen</button>
+            <button onClick={() => void addPlayer()} className="w-full rounded-xl bg-sky-400 text-slate-900 font-semibold p-3">Mitglied hinzufügen</button>
           </div>
         </div>
       )}
@@ -253,5 +315,24 @@ async function fileToDataUrl(file: File): Promise<string> {
     reader.onload = () => resolve(String(reader.result ?? ''));
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
   });
 }
