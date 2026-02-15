@@ -36,13 +36,14 @@ export function TournamentBracket({
             round.matches[idx] ?? { homePlayerId: 'TBD', awayPlayerId: 'TBD' },
           );
 
-          const expectedForRound = expectedPerRound[roundIndex] ?? 1;
-          const centerOffsetUnits = Math.max(0, (firstRoundCount / expectedForRound - 1) / 2);
-          const marginTop = centerOffsetUnits * (cardHeightPx + rowGapPx);
+          const step = 2 ** roundIndex;
+          const base = cardHeightPx + rowGapPx;
+          const marginTop = ((step - 1) * base) / 2;
+          const columnGapPx = Math.max(rowGapPx, step * base - cardHeightPx);
 
           return (
             <div key={round.roundNumber} className="w-[280px]" style={{ marginTop }}>
-              <div className="space-y-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${columnGapPx}px` }}>
               <div className="rounded-xl border soft-border hero-gradient p-3">
                 <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
                 <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
@@ -90,7 +91,10 @@ export function TournamentBracket({
                     {roundIndex > 0 && <div className="pointer-events-none absolute -left-4 top-1/2 h-px w-4 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-4 top-1/2 h-px w-4 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && fixtureIndex % 2 === 0 && fixtureIndex + 1 < paddedMatches.length && (
-                      <div className="pointer-events-none absolute -right-4 top-1/2 h-[calc(100%+0.75rem)] w-px bg-slate-500" />
+                      <div
+                        className="pointer-events-none absolute -right-4 top-1/2 w-px bg-slate-500"
+                        style={{ height: `${cardHeightPx + columnGapPx}px` }}
+                      />
                     )}
                   </div>
                 );
