@@ -136,12 +136,15 @@ export function DashboardPage() {
       <div>
         <h3 className="text-xs uppercase tracking-wider muted-text mb-2">Vereinsranking (ELO)</h3>
         <div className="space-y-2">
-          {clubRanking.slice(0, 5).map((entry, index) => (
-            <div key={entry.playerId} className="card-bg rounded-xl border soft-border px-3 py-2 text-xs flex items-center justify-between">
-              <span>#{index + 1} {entry.playerId}</span>
-              <span className="primary-text font-semibold">{entry.rating}</span>
-            </div>
-          ))}
+          {clubRanking.slice(0, 5).map((entry, index) => {
+            const playerName = managedPlayers.find((p) => p.id === entry.playerId)?.displayName ?? entry.playerId;
+            return (
+              <div key={entry.playerId} className="card-bg rounded-xl border soft-border px-3 py-2 text-xs flex items-center justify-between">
+                <span>#{index + 1} {playerName}</span>
+                <span className="primary-text font-semibold">{entry.rating}</span>
+              </div>
+            );
+          })}
           {clubRanking.length === 0 && <div className="card-bg rounded-xl border soft-border px-3 py-2 text-xs muted-text">Noch kein Vereinsranking verfügbar.</div>}
         </div>
       </div>

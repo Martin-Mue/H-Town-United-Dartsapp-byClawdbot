@@ -1,5 +1,28 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useThemeMode } from '../../app/providers/ThemeProvider';
+
+const SETTINGS_KEY = 'htown-app-settings';
+
+type AppSettings = {
+  eloRankingEnabled: boolean;
+  autoRankParticipants: boolean;
+  rankingDefaultMetric: 'ELO' | 'MATCH_WINS' | 'TOURNAMENT_WINS' | 'WIN_STREAK';
+};
+
+const defaultSettings: AppSettings = {
+  eloRankingEnabled: true,
+  autoRankParticipants: true,
+  rankingDefaultMetric: 'ELO',
+};
+
+const readSettings = (): AppSettings => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    return raw ? { ...defaultSettings, ...(JSON.parse(raw) as Partial<AppSettings>) } : defaultSettings;
+  } catch {
+    return defaultSettings;
+  }
+};
 
 /** Handles app preferences and account/privacy controls. */
 export function SettingsPage() {
@@ -13,12 +36,24 @@ export function SettingsPage() {
   const [defaultGameMode, setDefaultGameMode] = useState('X01_501');
   const [privacyMode, setPrivacyMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => readSettings());
+
+  const eloPreview = useMemo(() => {
+    if (!appSettings.eloRankingEnabled) return 'ELO-Ranking deaktiviert';
+    return 'Neu = Alt + K × (Ergebnis - Erwartung). Ergebnis: 1 Sieg, 0 Niederlage.';
+  }, [appSettings.eloRankingEnabled]);
+
+  const patchSettings = (patch: Partial<AppSettings>) => {
+    const next = { ...appSettings, ...patch };
+    setAppSettings(next);
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  };
 
   return (
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Einstellungen</h2>
-        <p className="text-xs muted-text mt-1">Geräteeinstellungen, Match-UX, Kamera und Datenschutz.</p>
+        <p className="text-xs muted-text mt-1">Geräteeinstellungen, Match-UX, Kamera, Datenschutz und Ranking-System.</p>
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
@@ -33,6 +68,30 @@ export function SettingsPage() {
         <ToggleRow label="Haptic Feedback" value={hapticsEnabled} onToggle={() => setHapticsEnabled((v) => !v)} />
         <ToggleRow label="Match Announcer" value={matchAnnouncer} onToggle={() => setMatchAnnouncer((v) => !v)} />
         <ToggleRow label="Checkout Hints" value={quickCheckoutHints} onToggle={() => setQuickCheckoutHints((v) => !v)} />
+      </div>
+
+      <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
+        <h3 className="text-sm uppercase">Vereinsranking & ELO</h3>
+        <ToggleRow label="ELO-Ranking aktiv" value={appSettings.eloRankingEnabled} onToggle={() => patchSettings({ eloRankingEnabled: !appSettings.eloRankingEnabled })} />
+        <ToggleRow label="Teilnehmer automatisch ranken" value={appSettings.autoRankParticipants} onToggle={() => patchSettings({ autoRankParticipants: !appSettings.autoRankParticipants })} />
+
+        <label className="text-xs muted-text block">Standard-Rankingfilter</label>
+        <select
+          value={appSettings.rankingDefaultMetric}
+          onChange={(event) => patchSettings({ rankingDefaultMetric: event.target.value as AppSettings['rankingDefaultMetric'] })}
+          className="w-full rounded-lg bg-slate-800 p-2 text-sm"
+        >
+          <option value="ELO">ELO-Punkte</option>
+          <option value="MATCH_WINS">Einzelsiege vs Vereinsmitglieder</option>
+          <option value="TOURNAMENT_WINS">Turniersiege</option>
+          <option value="WIN_STREAK">Siegesserie</option>
+        </select>
+
+        <div className="rounded-lg bg-slate-900/70 border soft-border p-3">
+          <p className="text-[11px] uppercase muted-text">Wie wird ELO berechnet?</p>
+          <p className="text-xs mt-1">{eloPreview}</p>
+          <p className="text-[11px] muted-text mt-1">K ist aktuell 32. Ein Sieg gegen stärkere Gegner gibt mehr Punkte als gegen schwächere.</p>
+        </div>
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
