@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 
 /** Dashboard with mobile pull-to-refresh style action and rich KPI cards. */
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
+  const activeMatchId = window.localStorage.getItem('htown-active-match-id');
 
   const refresh = async () => {
     setRefreshing(true);
@@ -27,6 +30,15 @@ export function DashboardPage() {
           </div>
         </div>
       </article>
+
+      {activeMatchId && (
+        <button
+          onClick={() => navigate(`/match/${activeMatchId}`)}
+          className="w-full rounded-xl bg-sky-500 p-3 text-sm font-semibold text-slate-900"
+        >
+          Resume Active Match
+        </button>
+      )}
 
       <button onClick={refresh} className="w-full rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
         {refreshing ? 'Refreshing club dashboard…' : 'Pull to refresh (tap simulation)'}

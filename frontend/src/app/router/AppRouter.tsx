@@ -8,6 +8,7 @@ import { TournamentsPage } from '../../features/tournaments/TournamentsPage';
 import { SettingsPage } from '../../features/settings/SettingsPage';
 import { LegResultScreen } from '../../features/games/LegResultScreen';
 import { MatchSummaryScreen } from '../../features/games/MatchSummaryScreen';
+import { MatchLivePage } from '../../features/games/MatchLivePage';
 
 /** Defines route map and animated slide transitions between screens. */
 export function AppRouter() {
@@ -27,6 +28,7 @@ export function AppRouter() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/players" element={<PlayersPage />} />
             <Route path="/new-game" element={<NewGamePage />} />
+            <Route path="/match/:matchId" element={<MatchLivePage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/leg-result" element={<LegResultScreen />} />
