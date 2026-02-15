@@ -3,6 +3,7 @@ import { useLocation, Routes, Route } from 'react-router-dom';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { DashboardPage } from '../../features/dashboard/DashboardPage';
 import { PlayersPage } from '../../features/players/PlayersPage';
+import { PlayerProfilePage } from '../../features/players/PlayerProfilePage';
 import { NewGamePage } from '../../features/games/NewGamePage';
 import { TournamentsPage } from '../../features/tournaments/TournamentsPage';
 import { SettingsPage } from '../../features/settings/SettingsPage';
@@ -29,6 +30,7 @@ export function AppRouter() {
           <Routes location={location}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/players" element={<PlayersPage />} />
+            <Route path="/players/:playerId" element={<PlayerProfilePage />} />
             <Route path="/new-game" element={<NewGamePage />} />
             <Route path="/match/:matchId" element={<MatchLivePage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />

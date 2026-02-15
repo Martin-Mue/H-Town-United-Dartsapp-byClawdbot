@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 type RankingEntry = { playerId: string; rating: number };
 type RecentMatch = { matchId: string; mode: string; winnerPlayerId: string | null; players: string[] };
@@ -29,6 +30,11 @@ export function StatisticsPage() {
     }
   }, []);
 
+  const clubRanking = useMemo(() => {
+    const ids = new Set(localPlayers.map((p) => p.id));
+    return ranking.filter((entry) => ids.has(entry.playerId));
+  }, [ranking, localPlayers]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -55,7 +61,7 @@ export function StatisticsPage() {
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Statistiken</h2>
-        <p className="text-xs muted-text mt-1">Vereinsweite Auswertung, ELO und Spieler-Performance.</p>
+        <p className="text-xs muted-text mt-1">Vereinsweite Auswertung, ELO und individuelle Performance.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -66,15 +72,15 @@ export function StatisticsPage() {
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
-        <h3 className="text-sm uppercase mb-2">Global Ranking</h3>
+        <h3 className="text-sm uppercase mb-2">Vereinsranking (ELO)</h3>
         <div className="space-y-2 text-xs">
-          {ranking.slice(0, 10).map((entry, index) => (
-            <div key={entry.playerId} className="rounded-lg bg-slate-800 p-2 flex items-center justify-between">
+          {clubRanking.slice(0, 10).map((entry, index) => (
+            <Link key={entry.playerId} to={`/players/${entry.playerId}`} className="rounded-lg bg-slate-800 p-2 flex items-center justify-between">
               <span>#{index + 1} {entry.playerId}</span>
               <span className="primary-text font-semibold">{entry.rating}</span>
-            </div>
+            </Link>
           ))}
-          {ranking.length === 0 && <p className="muted-text">Noch kein Ranking verfügbar.</p>}
+          {clubRanking.length === 0 && <p className="muted-text">Noch kein Vereinsranking verfügbar.</p>}
         </div>
       </div>
 
@@ -82,10 +88,10 @@ export function StatisticsPage() {
         <h3 className="text-sm uppercase mb-2">Spieler-Übersicht (lokal)</h3>
         <div className="space-y-2 text-xs">
           {localPlayers.map((player) => (
-            <div key={player.id} className="rounded-lg bg-slate-800 p-2">
+            <Link key={player.id} to={`/players/${player.id}`} className="rounded-lg bg-slate-800 p-2 block">
               <p className="font-semibold">{player.displayName}</p>
               <p className="muted-text mt-1">Ø {player.currentAverage ?? 0} · Checkout {player.checkoutPercentage ?? 0}% · Pressure {player.pressurePerformanceIndex ?? 0}</p>
-            </div>
+            </Link>
           ))}
           {localPlayers.length === 0 && <p className="muted-text">Noch keine lokalen Spielerprofile.</p>}
         </div>
