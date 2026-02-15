@@ -481,7 +481,7 @@ export function MatchLivePage() {
               <p className="font-semibold">{p.displayName}</p>
               {p.playerId === legStarterPlayerId && (
                 <span className="mt-1 inline-block rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
-                  🎯 STARTET
+                  🎯
                 </span>
               )}
               <p className="text-5xl font-bold leading-none mt-1">{isCricket ? p.cricketScore : p.score}</p>
