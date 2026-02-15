@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TournamentBracket, type TournamentRound } from '../../components/tournament/TournamentBracket';
-import { TournamentApiClient, type RoundMode, type TournamentFormat, type TournamentStateDto } from '../../services/TournamentApiClient';
+import { GameApiClient } from '../../services/GameApiClient';
+import { TournamentApiClient, type RoundMode, type TournamentFormat, type TournamentStateDto, type ByePlacement, type SeedingMode } from '../../services/TournamentApiClient';
 
 const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
+const gameApiClient = new GameApiClient('http://localhost:8080');
 
 type ManagedPlayer = {
   id: string;
   displayName: string;
   membershipStatus: 'CLUB_MEMBER' | 'TRIAL';
+  preferredCheckoutMode: 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
 };
 
 export function TournamentsPage() {
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<TournamentStateDto[]>([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState<string>('');
   const [name, setName] = useState('H-Town Cup');
@@ -18,6 +23,11 @@ export function TournamentsPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [guestName, setGuestName] = useState('');
   const [guestPlayers, setGuestPlayers] = useState<string[]>([]);
+  const [byePlacement, setByePlacement] = useState<ByePlacement>('ROUND_1');
+  const [seedingMode, setSeedingMode] = useState<SeedingMode>('RANDOM');
+  const [defaultLegsPerSet, setDefaultLegsPerSet] = useState(3);
+  const [defaultSetsToWin, setDefaultSetsToWin] = useState(2);
+  const [allowRoundModeSwitch, setAllowRoundModeSwitch] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const clubPlayers = useMemo<ManagedPlayer[]>(() => {
@@ -61,27 +71,21 @@ export function TournamentsPage() {
 
   const addGuest = () => {
     const trimmed = guestName.trim();
-    if (!trimmed) return;
-    if (guestPlayers.includes(trimmed)) return;
+    if (!trimmed || guestPlayers.includes(trimmed)) return;
     setGuestPlayers((prev) => [...prev, trimmed]);
     setGuestName('');
   };
 
-  const removeGuest = (nameToRemove: string) => setGuestPlayers((prev) => prev.filter((entry) => entry !== nameToRemove));
-
   const createTournament = async () => {
     const participants = [...selectedMembers, ...guestPlayers];
-
-    if (participants.length < 2) {
-      setErrorMessage('Mindestens 2 Teilnehmer angeben.');
-      return;
-    }
+    if (participants.length < 2) return setErrorMessage('Mindestens 2 Teilnehmer angeben.');
 
     const created = await tournamentApiClient.createTournament({
       name: name.trim() || 'H-Town Cup',
       format,
       participants,
       roundModes: ['X01_501', 'X01_501', 'X01_501'],
+      settings: { byePlacement, seedingMode, defaultLegsPerSet, defaultSetsToWin, allowRoundModeSwitch },
     });
 
     await refresh();
@@ -94,57 +98,83 @@ export function TournamentsPage() {
     setTournaments((prev) => prev.map((entry) => (entry.tournamentId === updated.tournamentId ? updated : entry)));
   };
 
-  const onSelectWinner = async (roundNumber: number, fixtureIndex: number, winner: string) => {
+  const onSelectWinner = async (roundNumber: number, fixtureIndex: number, winner: string, resultLabel?: string) => {
     if (!selectedTournament) return;
-    const updated = await tournamentApiClient.recordWinner(selectedTournament.tournamentId, roundNumber, fixtureIndex, winner);
+    const updated = await tournamentApiClient.recordWinner(selectedTournament.tournamentId, roundNumber, fixtureIndex, winner, resultLabel);
     setTournaments((prev) => prev.map((entry) => (entry.tournamentId === updated.tournamentId ? updated : entry)));
+  };
+
+  const onStartMatch = async (roundNumber: number, fixtureIndex: number) => {
+    if (!selectedTournament) return;
+    const fixture = selectedTournament.rounds.find((r) => r.roundNumber === roundNumber)?.fixtures[fixtureIndex];
+    if (!fixture) return;
+
+    const home = clubPlayers.find((p) => p.displayName === fixture.homePlayerId);
+    const away = clubPlayers.find((p) => p.displayName === fixture.awayPlayerId);
+
+    const created = await gameApiClient.createMatch({
+      mode: selectedTournament.rounds.find((r) => r.roundNumber === roundNumber)?.mode ?? 'X01_501',
+      legsPerSet: selectedTournament.settings.defaultLegsPerSet,
+      setsToWin: selectedTournament.settings.defaultSetsToWin,
+      startingPlayerId: 'p1',
+      players: [
+        { playerId: home?.id ?? `guest-${fixture.homePlayerId}`, displayName: fixture.homePlayerId, checkoutMode: home?.preferredCheckoutMode ?? 'DOUBLE_OUT' },
+        { playerId: away?.id ?? `guest-${fixture.awayPlayerId}`, displayName: fixture.awayPlayerId, checkoutMode: away?.preferredCheckoutMode ?? 'DOUBLE_OUT' },
+      ],
+    });
+
+    await tournamentApiClient.linkFixtureMatch(selectedTournament.tournamentId, roundNumber, fixtureIndex, created.matchId);
+    navigate(`/match/${created.matchId}?tournamentId=${selectedTournament.tournamentId}&round=${roundNumber}&fixture=${fixtureIndex}`);
   };
 
   return (
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="rounded-2xl hero-gradient border soft-border p-4">
         <h2 className="text-xl uppercase">Turniere</h2>
-        <p className="text-xs muted-text">Mitglieder einladen + Gastspieler hinzufügen.</p>
+        <p className="text-xs muted-text">Adaptive Brackets, Match-Start aus Turnierkarte, Ergebnisrückfluss.</p>
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
         <h3 className="text-sm uppercase">Neues Turnier</h3>
         <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg bg-slate-800 p-2 text-sm" placeholder="Turniername" />
-
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => setFormat('SINGLE_ELIMINATION')} className={`rounded-lg p-2 text-xs ${format === 'SINGLE_ELIMINATION' ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>K.O.</button>
           <button onClick={() => setFormat('ROUND_ROBIN')} className={`rounded-lg p-2 text-xs ${format === 'ROUND_ROBIN' ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>Round Robin</button>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-xs muted-text">Vereinsmitglieder einladen</p>
-          <div className="flex flex-wrap gap-2">
-            {clubPlayers.map((player) => (
-              <button
-                key={player.id}
-                onClick={() => toggleMember(player.displayName)}
-                className={`rounded-full px-3 py-1 text-xs ${selectedMembers.includes(player.displayName) ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}
-              >
-                {player.displayName}
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <select value={byePlacement} onChange={(e) => setByePlacement(e.target.value as ByePlacement)} className="rounded bg-slate-800 p-2">
+            <option value="ROUND_1">Freilos Runde 1</option>
+            <option value="DISTRIBUTED">Freilos verteilt</option>
+            <option value="PLAY_IN">Play-In Quali</option>
+          </select>
+          <select value={seedingMode} onChange={(e) => setSeedingMode(e.target.value as SeedingMode)} className="rounded bg-slate-800 p-2">
+            <option value="RANDOM">Seed random</option>
+            <option value="MANUAL">Seed manuell</option>
+            <option value="RANKING">Seed Ranking</option>
+          </select>
+          <input type="number" min={1} max={15} value={defaultLegsPerSet} onChange={(e) => setDefaultLegsPerSet(Number(e.target.value || 1))} className="rounded bg-slate-800 p-2" placeholder="Legs/Set" />
+          <input type="number" min={1} max={9} value={defaultSetsToWin} onChange={(e) => setDefaultSetsToWin(Number(e.target.value || 1))} className="rounded bg-slate-800 p-2" placeholder="Sets to Win" />
         </div>
 
-        <div className="space-y-2">
-          <p className="text-xs muted-text">Gastspieler</p>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
-            <input value={guestName} onChange={(e) => setGuestName(e.target.value)} className="rounded-lg bg-slate-800 p-2 text-xs" placeholder="Gastname eingeben" />
-            <button onClick={addGuest} className="rounded-lg bg-slate-700 px-3 text-xs">Hinzufügen</button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {guestPlayers.map((guest) => (
-              <button key={guest} onClick={() => removeGuest(guest)} className="rounded-full bg-amber-900/40 px-3 py-1 text-xs text-amber-200">
-                {guest} ✕
-              </button>
-            ))}
-          </div>
+        <button onClick={() => setAllowRoundModeSwitch((v) => !v)} className="rounded bg-slate-800 p-2 text-xs text-left">
+          Rundenmodus veränderbar: <span className="primary-text">{allowRoundModeSwitch ? 'Ja' : 'Nein'}</span>
+        </button>
+
+        <p className="text-xs muted-text">Vereinsmitglieder einladen</p>
+        <div className="flex flex-wrap gap-2">
+          {clubPlayers.map((player) => (
+            <button key={player.id} onClick={() => toggleMember(player.displayName)} className={`rounded-full px-3 py-1 text-xs ${selectedMembers.includes(player.displayName) ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
+              {player.displayName}
+            </button>
+          ))}
         </div>
+
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <input value={guestName} onChange={(e) => setGuestName(e.target.value)} className="rounded-lg bg-slate-800 p-2 text-xs" placeholder="Gastname" />
+          <button onClick={addGuest} className="rounded-lg bg-slate-700 px-3 text-xs">Gast +</button>
+        </div>
+        <div className="flex flex-wrap gap-2">{guestPlayers.map((g) => <span key={g} className="rounded-full bg-amber-900/40 px-3 py-1 text-xs text-amber-200">{g}</span>)}</div>
 
         <button onClick={createTournament} className="w-full rounded-xl bg-sky-400 p-2 text-sm font-semibold text-slate-900">Turnier erstellen</button>
       </div>
@@ -162,7 +192,7 @@ export function TournamentsPage() {
           {rounds.map((round) => (
             <div key={round.roundNumber} className="grid grid-cols-2 gap-2 items-center text-xs">
               <span>Round {round.roundNumber}</span>
-              <select value={round.mode} onChange={(e) => setRoundMode(round.roundNumber, e.target.value as RoundMode)} className="rounded bg-slate-800 p-1">
+              <select value={round.mode} onChange={(e) => setRoundMode(round.roundNumber, e.target.value as RoundMode)} className="rounded bg-slate-800 p-1" disabled={!selectedTournament.settings.allowRoundModeSwitch}>
                 <option value="X01_301">301</option>
                 <option value="X01_501">501</option>
                 <option value="CRICKET">Cricket</option>
@@ -173,7 +203,7 @@ export function TournamentsPage() {
         </div>
       )}
 
-      <TournamentBracket rounds={rounds} onSelectWinner={onSelectWinner} />
+      <TournamentBracket rounds={rounds} onSelectWinner={onSelectWinner} onStartMatch={onStartMatch} />
 
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-2">
         <h3 className="text-sm uppercase">Vereinshistorie</h3>
@@ -184,7 +214,6 @@ export function TournamentsPage() {
               <p className="text-xs muted-text">{entry.format.replace('_', ' ')} · {entry.championPlayerId ? `Sieger ${entry.championPlayerId}` : 'Laufend'}</p>
             </button>
           ))}
-          {tournaments.length === 0 && <p className="text-xs muted-text">Noch keine Turniere.</p>}
         </div>
       </div>
 

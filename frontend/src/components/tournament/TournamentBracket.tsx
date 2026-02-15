@@ -2,6 +2,8 @@ export type TournamentMatch = {
   homePlayerId: string;
   awayPlayerId: string;
   winnerPlayerId?: string;
+  resultLabel?: string;
+  linkedMatchId?: string;
 };
 
 export type TournamentRound = {
@@ -10,49 +12,61 @@ export type TournamentRound = {
   matches: TournamentMatch[];
 };
 
-/** Renders polished horizontal tournament bracket with visible match results and winner selectors. */
+/** Adaptive tournament bracket with winner/result display and per-fixture match launch action. */
 export function TournamentBracket({
   rounds,
   onSelectWinner,
+  onStartMatch,
 }: {
   rounds: TournamentRound[];
-  onSelectWinner: (roundNumber: number, fixtureIndex: number, winner: string) => void;
+  onSelectWinner: (roundNumber: number, fixtureIndex: number, winner: string, resultLabel?: string) => void;
+  onStartMatch: (roundNumber: number, fixtureIndex: number) => void;
 }) {
   return (
     <div className="overflow-x-auto pb-3">
-      <div className="flex items-start gap-6 min-w-max">
+      <div className="flex items-start gap-4 min-w-max">
         {rounds.map((round, roundIndex) => (
-          <div key={round.roundNumber} className="w-72 space-y-3">
+          <div key={round.roundNumber} className="w-[280px] space-y-3">
             <div className="rounded-xl border soft-border hero-gradient p-3">
               <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
               <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
             </div>
 
-            {round.matches.map((match, fixtureIndex) => (
-              <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative rounded-xl border soft-border card-bg p-3">
-                <div className="space-y-1 text-xs">
-                  <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
-                  <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
-                </div>
-
-                {match.winnerPlayerId ? (
-                  <p className="mt-2 rounded bg-emerald-900/40 px-2 py-1 text-[11px] text-emerald-200">Ergebnis: {match.winnerPlayerId}</p>
-                ) : (
-                  <div className="mt-2 grid grid-cols-2 gap-1">
-                    <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
-                      {match.homePlayerId}
-                    </button>
-                    <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
-                      {match.awayPlayerId}
-                    </button>
+            {round.matches.map((match, fixtureIndex) => {
+              const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
+              return (
+                <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative rounded-xl border soft-border card-bg p-3">
+                  <div className="space-y-1 text-xs">
+                    <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
+                    <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
                   </div>
-                )}
 
-                {roundIndex < rounds.length - 1 && (
-                  <div className="pointer-events-none absolute -right-6 top-1/2 h-px w-6 bg-slate-600" />
-                )}
-              </div>
-            ))}
+                  {match.winnerPlayerId ? (
+                    <p className="mt-2 rounded bg-emerald-900/40 px-2 py-1 text-[11px] text-emerald-200">
+                      Ergebnis: {match.winnerPlayerId}{match.resultLabel ? ` (${match.resultLabel})` : ''}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-2 grid grid-cols-2 gap-1">
+                        <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
+                          {match.homePlayerId}
+                        </button>
+                        <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
+                          {match.awayPlayerId}
+                        </button>
+                      </div>
+                      {playable && (
+                        <button onClick={() => onStartMatch(round.roundNumber, fixtureIndex)} className="mt-2 w-full rounded bg-sky-400 p-1.5 text-[11px] font-semibold text-slate-900">
+                          Match starten
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-4 top-1/2 h-px w-4 bg-slate-600" />}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>

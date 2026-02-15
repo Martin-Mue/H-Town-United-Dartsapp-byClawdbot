@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CameraOff } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GameApiClient, type MatchStateDto } from '../../services/GameApiClient';
+import { TournamentApiClient } from '../../services/TournamentApiClient';
 
 const apiClient = new GameApiClient('http://localhost:8080');
+const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
 const CRICKET_TARGETS: Array<15 | 16 | 17 | 18 | 19 | 20 | 25> = [20, 19, 18, 17, 16, 15, 25];
 
 export function MatchLivePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { matchId = '' } = useParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [state, setState] = useState<MatchStateDto | null>(null);
@@ -17,6 +20,11 @@ export function MatchLivePage() {
   const [submitting, setSubmitting] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraHint, setCameraHint] = useState<string | null>(null);
+
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const tournamentId = query.get('tournamentId');
+  const round = query.get('round');
+  const fixture = query.get('fixture');
 
   useEffect(() => {
     if (!matchId) return;
@@ -48,6 +56,21 @@ export function MatchLivePage() {
     }
   };
 
+  const syncTournamentResultIfNeeded = async (next: MatchStateDto) => {
+    if (!next.winnerPlayerId || !tournamentId || !round || !fixture) return;
+    const winner = next.players.find((p) => p.playerId === next.winnerPlayerId);
+    const loser = next.players.find((p) => p.playerId !== next.winnerPlayerId);
+    const resultLabel = `${winner?.displayName ?? 'Winner'} def. ${loser?.displayName ?? 'Opponent'}`;
+
+    await tournamentApiClient.recordWinner(
+      tournamentId,
+      Number(round),
+      Number(fixture),
+      winner?.displayName ?? next.winnerPlayerId,
+      resultLabel,
+    );
+  };
+
   const submit = async () => {
     if (!state) return;
     setSubmitting(true);
@@ -59,7 +82,10 @@ export function MatchLivePage() {
             finalDartMultiplier: multiplier,
           });
       setState(next);
-      if (next.winnerPlayerId) navigate('/match-summary');
+      if (next.winnerPlayerId) {
+        await syncTournamentResultIfNeeded(next);
+        navigate('/tournaments');
+      }
     } finally {
       setSubmitting(false);
     }

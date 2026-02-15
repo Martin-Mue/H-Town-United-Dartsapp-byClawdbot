@@ -3,17 +3,24 @@ import { dirname } from 'node:path';
 import { TournamentAggregate } from '../../domain/aggregates/TournamentAggregate.js';
 import { TournamentRound } from '../../domain/entities/TournamentRound.js';
 import type { TournamentRepository } from '../../domain/repositories/TournamentRepository.js';
-import type { TournamentFormat } from '../../application/dto/CreateTournamentRequestDto.js';
+import type { TournamentFormat, TournamentSettingsDto } from '../../application/dto/CreateTournamentRequestDto.js';
 
 type TournamentSnapshot = {
   tournamentId: string;
   name: string;
   format: TournamentFormat;
+  settings?: TournamentSettingsDto;
   updatedAt: string;
   rounds: Array<{
     roundNumber: number;
     mode: 'X01_301' | 'X01_501' | 'CRICKET' | 'CUSTOM';
-    fixtures: Array<{ homePlayerId: string; awayPlayerId: string; winnerPlayerId?: string }>;
+    fixtures: Array<{
+      homePlayerId: string;
+      awayPlayerId: string;
+      winnerPlayerId?: string;
+      resultLabel?: string;
+      linkedMatchId?: string;
+    }>;
   }>;
 };
 
@@ -49,7 +56,21 @@ export class FileTournamentRepository implements TournamentRepository {
       const parsed = JSON.parse(raw) as TournamentSnapshot[];
       for (const entry of parsed) {
         const rounds = entry.rounds.map((round) => new TournamentRound(round.roundNumber, round.mode, round.fixtures));
-        const aggregate = new TournamentAggregate(entry.tournamentId, entry.name, entry.format, rounds, true, entry.updatedAt);
+        const aggregate = new TournamentAggregate(
+          entry.tournamentId,
+          entry.name,
+          entry.format,
+          entry.settings ?? {
+            byePlacement: 'ROUND_1',
+            seedingMode: 'RANDOM',
+            defaultLegsPerSet: 3,
+            defaultSetsToWin: 2,
+            allowRoundModeSwitch: true,
+          },
+          rounds,
+          true,
+          entry.updatedAt,
+        );
         this.store.set(entry.tournamentId, aggregate);
       }
     } catch {
@@ -63,6 +84,7 @@ export class FileTournamentRepository implements TournamentRepository {
       tournamentId: tournament.tournamentId,
       name: tournament.name,
       format: tournament.format,
+      settings: tournament.settings,
       updatedAt: tournament.updatedAt,
       rounds: tournament.getRounds().map((round) => ({
         roundNumber: round.roundNumber,

@@ -10,6 +10,13 @@ export class TournamentModeService {
       tournamentId,
       'Round Configurable Tournament',
       'SINGLE_ELIMINATION',
+      {
+        byePlacement: 'ROUND_1',
+        seedingMode: 'RANDOM',
+        defaultLegsPerSet: 3,
+        defaultSetsToWin: 2,
+        allowRoundModeSwitch: true,
+      },
       [
         new TournamentRound(1, 'X01_301', []),
         new TournamentRound(2, 'X01_501', []),
