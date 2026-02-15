@@ -73,19 +73,21 @@ export function PlayerProfilePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs">
-        <Stat title="Average" value={String(player.currentAverage ?? 0)} />
-        <Stat title="Checkout %" value={String(player.checkoutPercentage ?? 0)} />
-        <Stat title="Pressure" value={String(player.pressurePerformanceIndex ?? 0)} />
-        <Stat title="180er" value={String(player.total180s ?? 0)} />
+        <Stat title="3-Dart Average" value={String(player.currentAverage ?? 0)} />
+        <Stat title="Checkout-Quote (%)" value={String(player.checkoutPercentage ?? 0)} />
+        <Stat title="Pressure-Index (0-100)" value={String(player.pressurePerformanceIndex ?? 0)} />
+        <Stat title="180er gesamt" value={String(player.total180s ?? 0)} />
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Trendlinie Trefferbilanz</h3>
+        <p className="text-xs muted-text mb-2">Zeigt die Entwicklung des 3-Dart-Average (höher = besser).</p>
         <AverageTrendChart values={trend} />
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Treffer-Heatmap</h3>
+        <p className="text-xs muted-text mb-2">Dunkler = niedrige Trefferstabilität, heller = stabile Trefferzonen.</p>
         <ThrowHeatmapGrid intensity={heat} />
       </div>
 

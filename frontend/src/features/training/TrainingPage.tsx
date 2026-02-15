@@ -225,6 +225,7 @@ export function TrainingPage() {
         <div>
           <h2 className="text-lg uppercase">Training</h2>
           <p className="text-xs muted-text">Alle Trainingsmodi mit echter Modus-spezifischer Logik.</p>
+          <p className="text-[11px] muted-text mt-1">Pressure-Index wird aus Decider-/Druckübungen berechnet (0-100).</p>
         </div>
       </div>
 

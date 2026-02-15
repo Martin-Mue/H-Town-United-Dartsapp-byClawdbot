@@ -62,6 +62,7 @@ export function StatisticsPage() {
       <div className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Statistiken</h2>
         <p className="text-xs muted-text mt-1">Vereinsweite Auswertung, ELO und individuelle Performance.</p>
+        <p className="text-[11px] muted-text mt-2">Pressure-Index = Leistung in Drucksituationen (Decider/Finish unter Druck), Skala 0-100.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -90,7 +91,7 @@ export function StatisticsPage() {
           {localPlayers.map((player) => (
             <Link key={player.id} to={`/players/${player.id}`} className="rounded-lg bg-slate-800 p-2 block">
               <p className="font-semibold">{player.displayName}</p>
-              <p className="muted-text mt-1">Ø {player.currentAverage ?? 0} · Checkout {player.checkoutPercentage ?? 0}% · Pressure {player.pressurePerformanceIndex ?? 0}</p>
+              <p className="muted-text mt-1">Ø (3-Dart Average): {player.currentAverage ?? 0} · Checkout-Quote: {player.checkoutPercentage ?? 0}% · Pressure-Index (Drucksituationen): {player.pressurePerformanceIndex ?? 0}/100</p>
             </Link>
           ))}
           {localPlayers.length === 0 && <p className="muted-text">Noch keine lokalen Spielerprofile.</p>}
