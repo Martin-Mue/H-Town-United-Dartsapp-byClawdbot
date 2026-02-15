@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useThemeMode } from '../../app/providers/ThemeProvider';
 import { BottomNavigation } from '../navigation/BottomNavigation';
 
@@ -26,9 +27,14 @@ export function MobileShell({ children }: PropsWithChildren) {
               </div>
             </div>
 
-            <button onClick={toggleMode} className="rounded-lg px-2 py-2 card-bg soft-border border" aria-label="Toggle theme">
-              {mode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+            <div className="flex items-center gap-2">
+              <Link to="/settings" className="rounded-lg px-2 py-2 card-bg soft-border border" aria-label="Open settings">
+                <Settings size={16} />
+              </Link>
+              <button onClick={toggleMode} className="rounded-lg px-2 py-2 card-bg soft-border border" aria-label="Toggle theme">
+                {mode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </div>
           </div>
         </div>
       </header>

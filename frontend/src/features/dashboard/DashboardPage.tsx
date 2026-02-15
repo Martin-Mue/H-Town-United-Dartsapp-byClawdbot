@@ -72,7 +72,7 @@ export function DashboardPage() {
   const quickActions = [
     { title: 'Neues Spiel', subtitle: '501 · 301 · Cricket', icon: Target, onClick: () => navigate('/new-game') },
     { title: 'Turnier', subtitle: 'K.O. · Round Robin', icon: Trophy, onClick: () => navigate('/tournaments') },
-    { title: 'Statistiken', subtitle: 'Ranglisten & Vergleiche', icon: BarChart3, onClick: () => navigate('/settings') },
+    { title: 'Statistiken', subtitle: 'Ranglisten & Vergleiche', icon: BarChart3, onClick: () => navigate('/statistics') },
     { title: 'Training', subtitle: 'Drills & Coaching', icon: Dumbbell, onClick: () => navigate('/training') },
   ];
 
