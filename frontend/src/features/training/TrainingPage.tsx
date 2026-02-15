@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Dumbbell, Play, Target, RotateCw, Crosshair, Zap, Trophy, CheckCircle2, BookOpen, Camera, CameraOff } from 'lucide-react';
 import { MODE_RULES } from './modeRules';
 
@@ -52,6 +52,18 @@ export function TrainingPage() {
   const [trainingMultiplier, setTrainingMultiplier] = useState<1 | 2 | 3>(1);
   const [trainingSegment, setTrainingSegment] = useState<number>(20);
   const [trainingThrows, setTrainingThrows] = useState<Array<{ base: number; mult: 1 | 2 | 3; points: number }>>([]);
+  const [trainingTarget, setTrainingTarget] = useState<number>(20);
+
+
+  useEffect(() => {
+    if (!selectedDrill) return;
+    if (selectedDrill.id === 'finish') setTrainingTarget(121);
+    else if (selectedDrill.id === 'random') setTrainingTarget(61 + Math.floor(Math.random() * 40));
+    else if (selectedDrill.id === 'pressure') setTrainingTarget(40);
+    else if (selectedDrill.id === 't20') setTrainingTarget(20);
+    else if (selectedDrill.id === 'doubles') setTrainingTarget(1);
+    else setTrainingTarget(1);
+  }, [selectedDrill]);
 
 
   const players = useMemo<ManagedPlayer[]>(() => {
@@ -162,8 +174,20 @@ export function TrainingPage() {
 
   const addTrainingDart = () => {
     if (trainingThrows.length >= 120) return;
-    const points = trainingSegment === 50 ? 50 : Math.min(60, trainingSegment * trainingMultiplier);
-    setTrainingThrows((prev) => [...prev, { base: trainingSegment, mult: trainingMultiplier, points }]);
+    const forcedMultiplier = selectedDrill?.id === 'doubles' ? 2 : trainingMultiplier;
+    const points = trainingSegment === 50 ? 50 : Math.min(60, trainingSegment * forcedMultiplier);
+    const next = { base: trainingSegment, mult: forcedMultiplier as 1 | 2 | 3, points };
+    setTrainingThrows((prev) => [...prev, next]);
+
+    if (selectedDrill?.id === 'clock') {
+      if (trainingSegment === trainingTarget) setTrainingTarget((t) => (t >= 20 ? 25 : t + 1));
+    }
+    if (selectedDrill?.id === 'doubles') {
+      if (forcedMultiplier === 2 && trainingSegment === trainingTarget) setTrainingTarget((t) => Math.min(20, t + 1));
+    }
+    if (selectedDrill?.id === 'random' && trainingSegment * forcedMultiplier === trainingTarget) {
+      setTrainingTarget(61 + Math.floor(Math.random() * 40));
+    }
   };
 
   const completeSession = () => {
@@ -220,6 +244,7 @@ export function TrainingPage() {
             <selectedDrill.icon className="w-10 h-10 text-[var(--primary)] mx-auto" />
             <h2 className="text-xl uppercase mt-2">{selectedDrill.name}</h2>
             <p className="text-sm muted-text">{selectedDrill.description}</p>
+            <p className="text-xs primary-text mt-1">Aktuelles Ziel: {selectedDrill.id === 'clock' ? (trainingTarget === 25 ? 'Bull' : trainingTarget) : selectedDrill.id === 'doubles' ? `D${trainingTarget}` : selectedDrill.id === 't20' ? 'T20' : selectedDrill.id === 'finish' ? `${trainingTarget} Checkout` : selectedDrill.id === 'random' ? `${trainingTarget} Checkout` : selectedDrill.id === 'pressure' ? `${trainingTarget} Rest` : trainingTarget}</p>
           </div>
 
           <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)} className="w-full rounded-xl bg-slate-800 p-2 text-sm">
@@ -263,7 +288,9 @@ export function TrainingPage() {
             </div>
 
             <button onClick={addTrainingDart} className="w-full rounded bg-slate-800 p-1.5 text-xs">Dart hinzufügen</button>
+            {selectedDrill.id === 'random' && <button onClick={() => setTrainingTarget(61 + Math.floor(Math.random() * 40))} className="w-full rounded bg-slate-800 p-1.5 text-xs">Neue Zufalls-Zielzahl</button>}
             <p className="text-[11px] muted-text">Darts: {trainingThrows.length} · Letzter: {trainingThrows.at(-1) ? `${trainingThrows.at(-1)?.base}x${trainingThrows.at(-1)?.mult}` : '—'}</p>
+            <p className="text-[11px] muted-text">Je nach Modus wird ein Zielsegment/Zielcheckout vorgegeben und live aktualisiert.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
