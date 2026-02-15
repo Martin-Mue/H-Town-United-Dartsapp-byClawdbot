@@ -68,6 +68,28 @@ export async function createApp(): Promise<FastifyInstance> {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
 
+  app.get('/api/analytics/dashboard-summary', async () => {
+    const matches = await matchService.listMatches();
+    const players = matches.flatMap((match) => match.players);
+    const averageValues = players.map((player) => player.average).filter((value) => Number.isFinite(value));
+    const checkoutValues = players.map((player) => player.checkoutPercentage).filter((value) => Number.isFinite(value));
+
+    const clubAverage = averageValues.length > 0
+      ? averageValues.reduce((acc, value) => acc + value, 0) / averageValues.length
+      : 0;
+    const checkoutAverage = checkoutValues.length > 0
+      ? checkoutValues.reduce((acc, value) => acc + value, 0) / checkoutValues.length
+      : 0;
+
+    return {
+      clubAverage: Number(clubAverage.toFixed(2)),
+      checkoutAverage: Number(checkoutAverage.toFixed(2)),
+      liveMatches: matches.filter((match) => !match.winnerPlayerId).length,
+      topScore180Count: players.filter((player) => player.highestTurnScore >= 180).length,
+      activeMatchIds: matches.filter((match) => !match.winnerPlayerId).map((match) => match.matchId),
+    };
+  });
+
   new GameController(matchService).registerRoutes(app);
 
   return app;
