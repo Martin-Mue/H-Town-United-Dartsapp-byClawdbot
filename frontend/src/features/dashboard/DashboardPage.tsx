@@ -16,6 +16,9 @@ type ManagedPlayer = {
   displayName: string;
   preferredCheckoutMode: 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
   notes: string;
+  currentAverage?: number;
+  checkoutPercentage?: number;
+  pressurePerformanceIndex?: number;
 };
 
 const PLAYER_STORAGE_KEY = 'htown-players';
@@ -124,6 +127,15 @@ export function DashboardPage() {
           ))}
           {managedPlayers.length === 0 && <p className="text-xs muted-text">No players stored yet.</p>}
         </div>
+      </article>
+
+      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Training Focus Today</h3>
+        <ul className="mt-2 list-disc pl-4 text-xs muted-text space-y-1">
+          <li>Checkout pressure sessions: {managedPlayers.filter((p) => Number(p.checkoutPercentage ?? 0) < 30).length} players</li>
+          <li>Scoring consistency drills: {managedPlayers.filter((p) => Number(p.currentAverage ?? 0) < 60).length} players</li>
+          <li>Clutch drills: {managedPlayers.filter((p) => Number(p.pressurePerformanceIndex ?? 0) < 65).length} players</li>
+        </ul>
       </article>
 
       <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
