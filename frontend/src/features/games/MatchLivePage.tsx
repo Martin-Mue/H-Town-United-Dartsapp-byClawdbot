@@ -479,7 +479,11 @@ export function MatchLivePage() {
           return (
             <div key={p.playerId} className={`rounded-xl border p-4 text-center ${activePlayer ? 'border-sky-400 glow-cyan' : 'soft-border card-bg'}`}>
               <p className="font-semibold">{p.displayName}</p>
-              {p.playerId === legStarterPlayerId && <p className="text-[10px] text-amber-200 mt-1">🎯 Leg-Starter</p>}
+              {p.playerId === legStarterPlayerId && (
+                <span className="mt-1 inline-block rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
+                  🎯 STARTET
+                </span>
+              )}
               <p className="text-5xl font-bold leading-none mt-1">{isCricket ? p.cricketScore : p.score}</p>
               <p className="text-xs muted-text mt-1">Ø {p.average}</p>
             </div>
@@ -491,7 +495,6 @@ export function MatchLivePage() {
       {leadInfo && (
         <div className="w-full max-w-xl rounded-lg border soft-border bg-slate-900/60 p-2 text-xs">
           <p>{leadInfo.setLead} · {leadInfo.legLead}</p>
-          <p className="muted-text mt-1">Leg begonnen von: {state.players.find((p) => p.playerId === legStarterPlayerId)?.displayName ?? '—'}</p>
         </div>
       )}
       {!isCricket && checkoutSuggestions.length > 0 && (
