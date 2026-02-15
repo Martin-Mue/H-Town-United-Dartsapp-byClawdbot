@@ -13,7 +13,15 @@ type ManagedPlayer = {
   membershipStatus?: 'CLUB_MEMBER' | 'TRIAL';
 };
 
-type RecentMatch = { matchId: string; mode: string; winnerPlayerId: string | null; players: string[] };
+type RecentMatch = {
+  id: string;
+  playedAt: string;
+  mode: string;
+  players: Array<{ id: string; name: string }>;
+  winnerPlayerId: string | null;
+  winnerName: string | null;
+  resultLabel: string;
+};
 
 export function PlayerProfilePage() {
   const { playerId = '' } = useParams();
@@ -31,10 +39,12 @@ export function PlayerProfilePage() {
   const player = players.find((p) => p.id === playerId);
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/game/recent')
-      .then((res) => (res.ok ? res.json() : { matches: [] }))
-      .then((data: { matches: RecentMatch[] }) => setRecentMatches(data.matches))
-      .catch(() => setRecentMatches([]));
+    try {
+      const raw = window.localStorage.getItem('htown-match-history');
+      setRecentMatches(raw ? (JSON.parse(raw) as RecentMatch[]) : []);
+    } catch {
+      setRecentMatches([]);
+    }
   }, []);
 
   const trend = useMemo(() => {
@@ -82,13 +92,16 @@ export function PlayerProfilePage() {
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Gespielte Spiele & Ergebnisse</h3>
         <div className="space-y-2 text-xs">
-          {recentMatches.filter((m) => m.players.includes(player.displayName)).map((m) => (
-            <div key={m.matchId} className="rounded bg-slate-800 p-2 flex items-center justify-between">
-              <span>{m.players.join(' vs ')} · {m.mode}</span>
-              <span className="primary-text">{m.winnerPlayerId ?? '—'}</span>
-            </div>
-          ))}
-          {recentMatches.filter((m) => m.players.includes(player.displayName)).length === 0 && <p className="muted-text">Noch keine Matches in der Historie.</p>}
+          {recentMatches
+            .filter((m) => m.players.some((p) => p.id === player.id || p.name === player.displayName))
+            .map((m) => (
+              <div key={m.id} className="rounded bg-slate-800 p-2">
+                <p>{m.players.map((p) => p.name).join(' vs ')} · {m.mode.replace('_', ' ')}</p>
+                <p className="muted-text mt-1">{new Date(m.playedAt).toLocaleString('de-DE')} · {m.resultLabel}</p>
+                <p className="primary-text mt-1">Sieger: {m.winnerName ?? m.winnerPlayerId ?? '—'}</p>
+              </div>
+            ))}
+          {recentMatches.filter((m) => m.players.some((p) => p.id === player.id || p.name === player.displayName)).length === 0 && <p className="muted-text">Noch keine Matches in der Historie.</p>}
         </div>
       </div>
 

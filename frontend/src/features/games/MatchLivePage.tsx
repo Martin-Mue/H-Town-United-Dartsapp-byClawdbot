@@ -7,19 +7,34 @@ import { TournamentApiClient } from '../../services/TournamentApiClient';
 const apiClient = new GameApiClient('http://localhost:8080');
 const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
 const CRICKET_TARGETS: Array<15 | 16 | 17 | 18 | 19 | 20 | 25> = [20, 19, 18, 17, 16, 15, 25];
+const MATCH_HISTORY_KEY = 'htown-match-history';
+
+type HistoryEntry = {
+  id: string;
+  playedAt: string;
+  mode: string;
+  players: Array<{ id: string; name: string }>;
+  winnerPlayerId: string | null;
+  winnerName: string | null;
+  resultLabel: string;
+};
 
 export function MatchLivePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { matchId = '' } = useParams();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
   const [state, setState] = useState<MatchStateDto | null>(null);
   const [multiplier, setMultiplier] = useState<1 | 2 | 3>(1);
   const [selected, setSelected] = useState<number>(20);
   const [cricketTarget, setCricketTarget] = useState<15 | 16 | 17 | 18 | 19 | 20 | 25>(20);
+  const [pendingX01, setPendingX01] = useState<Array<{ points: number; multiplier: 1 | 2 | 3; label: string }>>([]);
+  const [pendingCricket, setPendingCricket] = useState<Array<{ targetNumber: 15 | 16 | 17 | 18 | 19 | 20 | 25; multiplier: 1 | 2 | 3 }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraHint, setCameraHint] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -28,7 +43,7 @@ export function MatchLivePage() {
 
   useEffect(() => {
     if (!matchId) return;
-    apiClient.getMatch(matchId).then(setState).catch(() => undefined);
+    apiClient.getMatch(matchId).then(setState).catch(() => setErrorMessage('Match konnte nicht geladen werden.'));
   }, [matchId]);
 
   const isCricket = state?.mode === 'CRICKET';
@@ -49,18 +64,69 @@ export function MatchLivePage() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-      setCameraHint('Kamera aktiv (Beta): visuelle Assistenz vorbereitet, Auto-Scoring folgt als nächster Schritt.');
+      setCameraHint('Kamera aktiv (Beta): Score-Vorschlag folgt im nächsten CV-Schritt.');
       setCameraOn(true);
     } catch {
       setCameraHint('Kamera konnte nicht gestartet werden. Browser-Berechtigung prüfen.');
     }
   };
 
+  const addDartToTurn = () => {
+    if (pendingX01.length >= 3) return;
+    const points = Math.min(60, selected === 50 ? 50 : selected * multiplier);
+    const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${multiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${multiplier}`;
+    setPendingX01((prev) => [...prev, { points, multiplier, label }]);
+    setErrorMessage(null);
+  };
+
+  const addCricketThrowToTurn = () => {
+    if (pendingCricket.length >= 3) return;
+    setPendingCricket((prev) => [...prev, { targetNumber: cricketTarget, multiplier }]);
+    setErrorMessage(null);
+  };
+
+  const clearTurn = () => {
+    setPendingX01([]);
+    setPendingCricket([]);
+  };
+
+  const saveHistory = (next: MatchStateDto) => {
+    if (!next.winnerPlayerId) return;
+    const winner = next.players.find((p) => p.playerId === next.winnerPlayerId);
+    const winnerScore = next.scoreboard.find((s) => s.playerId === next.winnerPlayerId);
+    const loserScore = next.scoreboard.find((s) => s.playerId !== next.winnerPlayerId);
+    const resultLabel = winnerScore && loserScore
+      ? `${winnerScore.sets}:${loserScore.sets} Sets · ${winnerScore.legs}:${loserScore.legs} Legs`
+      : 'Match abgeschlossen';
+
+    const entry: HistoryEntry = {
+      id: next.matchId,
+      playedAt: new Date().toISOString(),
+      mode: next.mode,
+      players: next.players.map((p) => ({ id: p.playerId, name: p.displayName })),
+      winnerPlayerId: next.winnerPlayerId,
+      winnerName: winner?.displayName ?? null,
+      resultLabel,
+    };
+
+    try {
+      const raw = window.localStorage.getItem(MATCH_HISTORY_KEY);
+      const existing = raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+      const dedup = existing.filter((item) => item.id !== entry.id);
+      window.localStorage.setItem(MATCH_HISTORY_KEY, JSON.stringify([entry, ...dedup]));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   const syncTournamentResultIfNeeded = async (next: MatchStateDto) => {
     if (!next.winnerPlayerId || !tournamentId || !round || !fixture) return;
     const winner = next.players.find((p) => p.playerId === next.winnerPlayerId);
-    const loser = next.players.find((p) => p.playerId !== next.winnerPlayerId);
-    const resultLabel = `${winner?.displayName ?? 'Winner'} def. ${loser?.displayName ?? 'Opponent'}`;
+    const winnerScore = next.scoreboard.find((s) => s.playerId === next.winnerPlayerId);
+    const loserScore = next.scoreboard.find((s) => s.playerId !== next.winnerPlayerId);
+    const resultLabel = winnerScore && loserScore
+      ? `${winner?.displayName ?? 'Winner'} (${winnerScore.sets}:${loserScore.sets})`
+      : `${winner?.displayName ?? 'Winner'} gewinnt`;
 
     await tournamentApiClient.recordWinner(
       tournamentId,
@@ -71,20 +137,46 @@ export function MatchLivePage() {
     );
   };
 
-  const submit = async () => {
+  const submitTurn = async () => {
     if (!state) return;
     setSubmitting(true);
+    setErrorMessage(null);
+
     try {
-      const next = isCricket
-        ? await apiClient.registerCricketTurn(state.matchId, { targetNumber: cricketTarget, multiplier })
-        : await apiClient.registerTurn(state.matchId, {
-            points: Math.min(60, selected === 50 ? 50 : selected * multiplier),
-            finalDartMultiplier: multiplier,
-          });
-      setState(next);
-      if (next.winnerPlayerId) {
-        await syncTournamentResultIfNeeded(next);
-        navigate('/tournaments');
+      let nextState = state;
+
+      if (isCricket) {
+        if (pendingCricket.length === 0) {
+          setErrorMessage('Bitte bis zu 3 Darts hinzufügen.');
+          return;
+        }
+
+        for (const throwItem of pendingCricket) {
+          nextState = await apiClient.registerCricketTurn(nextState.matchId, throwItem);
+          if (nextState.winnerPlayerId) break;
+        }
+      } else {
+        if (pendingX01.length === 0) {
+          setErrorMessage('Bitte bis zu 3 Darts hinzufügen.');
+          return;
+        }
+
+        const totalPoints = pendingX01.reduce((sum, dart) => sum + dart.points, 0);
+        const finalDartMultiplier = pendingX01[pendingX01.length - 1]?.multiplier ?? 1;
+
+        nextState = await apiClient.registerTurn(nextState.matchId, {
+          points: totalPoints,
+          finalDartMultiplier,
+        });
+      }
+
+      setState(nextState);
+      clearTurn();
+
+      if (nextState.winnerPlayerId) {
+        saveHistory(nextState);
+        await syncTournamentResultIfNeeded(nextState);
+        navigate(tournamentId ? '/tournaments' : '/match-summary');
       }
     } finally {
       setSubmitting(false);
@@ -108,7 +200,7 @@ export function MatchLivePage() {
         })}
       </div>
 
-      <p className="primary-text text-sm font-semibold">{active?.displayName} wirft</p>
+      <p className="primary-text text-sm font-semibold">{active?.displayName} wirft (3 Darts)</p>
 
       <div className="w-full max-w-xl rounded-2xl border soft-border card-bg p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -130,13 +222,17 @@ export function MatchLivePage() {
         </div>
 
         {isCricket ? (
-          <div className="grid grid-cols-4 gap-2">
-            {CRICKET_TARGETS.map((n) => (
-              <button key={n} onClick={() => setCricketTarget(n)} className={`rounded-lg p-2 text-sm ${cricketTarget === n ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
-                {n === 25 ? 'Bull' : n}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-4 gap-2">
+              {CRICKET_TARGETS.map((n) => (
+                <button key={n} onClick={() => setCricketTarget(n)} className={`rounded-lg p-2 text-sm ${cricketTarget === n ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
+                  {n === 25 ? 'Bull' : n}
+                </button>
+              ))}
+            </div>
+            <button onClick={addCricketThrowToTurn} disabled={pendingCricket.length >= 3} className="w-full rounded-lg bg-slate-800 p-2 text-xs">Dart hinzufügen ({pendingCricket.length}/3)</button>
+            <p className="text-xs muted-text">Turn: {pendingCricket.map((d, i) => `#${i + 1} ${d.targetNumber === 25 ? 'Bull' : d.targetNumber}x${d.multiplier}`).join(' · ') || '—'}</p>
+          </>
         ) : (
           <>
             <div className="grid grid-cols-7 gap-2">
@@ -151,16 +247,19 @@ export function MatchLivePage() {
               <button onClick={() => setSelected(25)} className="rounded-lg bg-slate-800 p-2 text-xs">Bull</button>
               <button onClick={() => setSelected(50)} className="rounded-lg bg-slate-800 p-2 text-xs">Bullseye</button>
             </div>
+            <button onClick={addDartToTurn} disabled={pendingX01.length >= 3} className="w-full rounded-lg bg-slate-800 p-2 text-xs">Dart hinzufügen ({pendingX01.length}/3)</button>
+            <p className="text-xs muted-text">Turn: {pendingX01.map((d, i) => `#${i + 1} ${d.label}=${d.points}`).join(' · ') || '—'}</p>
           </>
         )}
 
-        <p className="text-center text-4xl font-bold primary-text">
-          {isCricket ? `${cricketTarget === 25 ? 'Bull' : cricketTarget} x${multiplier}` : `${Math.min(60, selected === 50 ? 50 : selected * multiplier)} Punkte`}
-        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={clearTurn} className="rounded-xl bg-slate-700 p-2 text-sm">Turn löschen</button>
+          <button onClick={submitTurn} disabled={submitting} className="rounded-xl bg-sky-400 p-2 text-slate-900 font-semibold">
+            {submitting ? 'Speichern…' : '3-Dart Turn eintragen'}
+          </button>
+        </div>
 
-        <button onClick={submit} disabled={submitting} className="w-full rounded-xl bg-sky-400 p-3 text-slate-900 font-semibold">
-          {submitting ? 'Speichern…' : 'WURF EINTRAGEN'}
-        </button>
+        {errorMessage && <p className="rounded bg-red-900/40 p-2 text-xs text-red-100">{errorMessage}</p>}
       </div>
     </section>
   );
