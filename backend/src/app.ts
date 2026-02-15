@@ -78,6 +78,10 @@ export async function createApp(): Promise<FastifyInstance> {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
 
+  app.get('/api/global-ranking', async () => ({
+    ranking: matchService.getGlobalRanking(),
+  }));
+
   app.get('/api/analytics/dashboard-summary', async () => {
     const matches = await matchService.listMatches();
     const players = matches.flatMap((match) => match.players);

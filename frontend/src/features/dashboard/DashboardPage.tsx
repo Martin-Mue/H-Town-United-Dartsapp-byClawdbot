@@ -11,6 +11,11 @@ interface DashboardSummary {
   activeMatchIds: string[];
 }
 
+interface GlobalRankingEntry {
+  playerId: string;
+  rating: number;
+}
+
 type ManagedPlayer = {
   id: string;
   displayName: string;
@@ -29,6 +34,7 @@ export function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [ranking, setRanking] = useState<GlobalRankingEntry[]>([]);
   const [clock, setClock] = useState(new Date());
   const activeMatchId = window.localStorage.getItem('htown-active-match-id');
 
@@ -46,10 +52,17 @@ export function DashboardPage() {
   const loadSummary = async () => {
     try {
       setErrorMessage(null);
-      const response = await fetch('http://localhost:8080/api/analytics/dashboard-summary');
-      if (!response.ok) throw new Error('bad status');
-      const payload = (await response.json()) as DashboardSummary;
+      const [summaryResponse, rankingResponse] = await Promise.all([
+        fetch('http://localhost:8080/api/analytics/dashboard-summary'),
+        fetch('http://localhost:8080/api/global-ranking'),
+      ]);
+      if (!summaryResponse.ok || !rankingResponse.ok) throw new Error('bad status');
+
+      const payload = (await summaryResponse.json()) as DashboardSummary;
+      const rankingPayload = (await rankingResponse.json()) as { ranking: GlobalRankingEntry[] };
+
       setSummary(payload);
+      setRanking(rankingPayload.ranking.slice(0, 5));
     } catch {
       setErrorMessage('Backend summary unavailable. Start backend to enable live analytics.');
     }
@@ -136,6 +149,19 @@ export function DashboardPage() {
           <li>Scoring consistency drills: {managedPlayers.filter((p) => Number(p.currentAverage ?? 0) < 60).length} players</li>
           <li>Clutch drills: {managedPlayers.filter((p) => Number(p.pressurePerformanceIndex ?? 0) < 65).length} players</li>
         </ul>
+      </article>
+
+      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Global Ranking (ELO)</h3>
+        <div className="mt-2 space-y-2 text-xs">
+          {ranking.map((entry, index) => (
+            <div key={entry.playerId} className="rounded-lg bg-slate-800 p-2 flex items-center justify-between">
+              <span>#{index + 1} {entry.playerId}</span>
+              <span className="font-semibold text-sky-300">{entry.rating}</span>
+            </div>
+          ))}
+          {ranking.length === 0 && <p className="muted-text">No ranking entries yet.</p>}
+        </div>
       </article>
 
       <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">

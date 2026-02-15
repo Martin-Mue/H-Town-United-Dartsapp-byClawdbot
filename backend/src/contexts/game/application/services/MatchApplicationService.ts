@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { EventBus } from '../../../../shared/application/EventBus.js';
+import { EloRatingService } from '../../../global-ranking/domain/services/EloRatingService.js';
 import { DartsMatchAggregate } from '../../domain/aggregates/DartsMatchAggregate.js';
 import { PlayerLegState } from '../../domain/entities/PlayerLegState.js';
 import type { MatchRepository } from '../../domain/repositories/MatchRepository.js';
@@ -9,6 +10,9 @@ import type { RegisterTurnRequestDto } from '../dto/RegisterTurnRequestDto.js';
 
 /** Coordinates match use cases between API and domain layer. */
 export class MatchApplicationService {
+  private readonly eloRatingService = new EloRatingService();
+  private readonly ratings = new Map<string, number>();
+
   constructor(
     private readonly matchRepository: MatchRepository,
     private readonly eventBus: EventBus,
@@ -34,6 +38,10 @@ export class MatchApplicationService {
       players,
     );
 
+    for (const player of players) {
+      if (!this.ratings.has(player.playerId)) this.ratings.set(player.playerId, 1200);
+    }
+
     await this.matchRepository.save(match);
     return this.toStateDto(match);
   }
@@ -43,7 +51,9 @@ export class MatchApplicationService {
     const match = await this.matchRepository.findById(request.matchId);
     if (!match) throw new Error('Match was not found.');
 
+    const previousWinner = match.getWinnerPlayerId();
     match.registerTurn(request.points, request.finalDartMultiplier);
+    this.applyEloIfMatchCompleted(match, previousWinner);
 
     await this.matchRepository.save(match);
     await this.eventBus.publish(match.pullDomainEvents());
@@ -60,7 +70,9 @@ export class MatchApplicationService {
     const match = await this.matchRepository.findById(request.matchId);
     if (!match) throw new Error('Match was not found.');
 
+    const previousWinner = match.getWinnerPlayerId();
     match.registerCricketTurn(request.targetNumber, request.multiplier);
+    this.applyEloIfMatchCompleted(match, previousWinner);
 
     await this.matchRepository.save(match);
     await this.eventBus.publish(match.pullDomainEvents());
@@ -79,6 +91,29 @@ export class MatchApplicationService {
   public async listMatches(): Promise<MatchStateDto[]> {
     const matches = await this.matchRepository.findAll();
     return matches.map((match) => this.toStateDto(match));
+  }
+
+  /** Returns global ranking table derived from tracked player ELO ratings. */
+  public getGlobalRanking(): Array<{ playerId: string; rating: number }> {
+    return [...this.ratings.entries()]
+      .map(([playerId, rating]) => ({ playerId, rating }))
+      .sort((a, b) => b.rating - a.rating);
+  }
+
+  /** Applies ELO rating changes once when a match reaches terminal winner state. */
+  private applyEloIfMatchCompleted(match: DartsMatchAggregate, previousWinner: string | null): void {
+    const winner = match.getWinnerPlayerId();
+    if (!winner || previousWinner === winner) return;
+
+    const loser = match.getPlayers().find((player) => player.playerId !== winner)?.playerId;
+    if (!loser) return;
+
+    const winnerRating = this.ratings.get(winner) ?? 1200;
+    const loserRating = this.ratings.get(loser) ?? 1200;
+    const updated = this.eloRatingService.calculateNewRatings(winnerRating, loserRating);
+
+    this.ratings.set(winner, updated.winner);
+    this.ratings.set(loser, updated.loser);
   }
 
   /** Maps match aggregate to stable API response DTO. */
