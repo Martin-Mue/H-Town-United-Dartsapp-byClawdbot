@@ -44,8 +44,8 @@ export function TournamentsPage() {
   };
 
   return (
-    <section className="space-y-3">
-      <div className="rounded-2xl card-bg p-4 flex items-center gap-3">
+    <section className="space-y-4 animate-[fadeIn_.25s_ease]">
+      <div className="rounded-2xl hero-gradient border soft-border p-4 flex items-center gap-3">
         <img src="/branding/h-town-united-logo-tree.jpg" alt="H-Town logo" className="h-10 w-10 rounded-full border border-slate-500 object-cover" />
         <span>Tournament mode with backend persistence and winner auto-progression</span>
       </div>

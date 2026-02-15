@@ -162,8 +162,8 @@ export function PlayersPage() {
   };
 
   return (
-    <section className="space-y-3">
-      <div className="rounded-2xl card-bg p-4">
+    <section className="space-y-4 animate-[fadeIn_.25s_ease]">
+      <div className="rounded-2xl hero-gradient border soft-border p-4">
         <h2 className="text-base font-semibold">Player Management</h2>
         <p className="text-xs muted-text mt-1">{totalPlayers} registered players in local club roster</p>
       </div>

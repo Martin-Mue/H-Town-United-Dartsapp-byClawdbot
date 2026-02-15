@@ -91,6 +91,11 @@ h6 {
   box-shadow: 0 0 24px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 button,
 a,
 input,

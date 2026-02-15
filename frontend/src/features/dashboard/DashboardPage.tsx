@@ -93,8 +93,8 @@ export function DashboardPage() {
   };
 
   return (
-    <section className="space-y-3">
-      <article className="relative overflow-hidden rounded-2xl card-bg p-5 shadow-lg shadow-black/20 border border-slate-700/30">
+    <section className="space-y-4 animate-[fadeIn_.25s_ease]">
+      <article className="relative overflow-hidden rounded-2xl hero-gradient p-5 shadow-lg shadow-black/20 border soft-border">
         <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-sky-400/10 blur-2xl" />
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
