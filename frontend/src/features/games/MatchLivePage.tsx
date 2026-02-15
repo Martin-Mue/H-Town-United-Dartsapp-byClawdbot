@@ -479,6 +479,7 @@ export function MatchLivePage() {
           return (
             <div key={p.playerId} className={`rounded-xl border p-4 text-center ${activePlayer ? 'border-sky-400 glow-cyan' : 'soft-border card-bg'}`}>
               <p className="font-semibold">{p.displayName}</p>
+              {p.playerId === legStarterPlayerId && <p className="text-[10px] text-amber-200 mt-1">🎯 Leg-Starter</p>}
               <p className="text-5xl font-bold leading-none mt-1">{isCricket ? p.cricketScore : p.score}</p>
               <p className="text-xs muted-text mt-1">Ø {p.average}</p>
             </div>
@@ -533,6 +534,12 @@ export function MatchLivePage() {
           </>
         ) : (
           <>
+            <button onClick={() => setQuickEntryMode((v) => !v)} className="w-full rounded bg-slate-800 p-1.5 text-xs text-left flex items-center justify-between">
+              <span>Eingabemodus</span>
+              <span className={quickEntryMode ? 'text-emerald-300' : 'text-slate-400'}>{quickEntryMode ? 'Gesamt-3-Dart' : 'Einzel-Darts'}</span>
+            </button>
+
+            {!quickEntryMode && (<>
             <div className="grid grid-cols-7 gap-2">
               {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                 <button key={n} onClick={() => setSelected(n)} className={`rounded-lg p-2 text-sm ${selected === n ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
@@ -576,11 +583,10 @@ export function MatchLivePage() {
               </div>
             )}
 
+            </>)}
+
             <div className="rounded border soft-border bg-slate-900/60 p-2 space-y-2">
-              <button onClick={() => setQuickEntryMode((v) => !v)} className="w-full rounded bg-slate-800 p-1.5 text-xs text-left flex items-center justify-between">
-                <span>Alternative Eingabe: Gesamt-3-Dart Ergebnis</span>
-                <span className={quickEntryMode ? 'text-emerald-300' : 'text-slate-400'}>{quickEntryMode ? 'AN' : 'AUS'}</span>
-              </button>
+              <p className="text-[11px] muted-text">{quickEntryMode ? 'Gesamtergebnis-Input aktiv. Einzel-Darts sind ausgeblendet.' : 'Einzel-Dart-Input aktiv. Für Gesamt-Input oben umschalten.'}</p>
               {quickEntryMode && (
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <input value={quickTurnPoints} onChange={(e) => setQuickTurnPoints(e.target.value)} type="number" min={0} max={180} className="rounded bg-slate-800 p-2" placeholder="Gesamtergebnis (0-180)" />
@@ -598,7 +604,7 @@ export function MatchLivePage() {
         <div className="grid grid-cols-2 gap-2">
           <button onClick={clearTurn} className="rounded-xl bg-slate-700 p-2 text-sm">Turn löschen</button>
           <button onClick={submitTurn} disabled={submitting} className="rounded-xl bg-sky-400 p-2 text-slate-900 font-semibold">
-            {submitting ? 'Speichern…' : '3-Dart Turn eintragen'}
+            {submitting ? 'Speichern…' : quickEntryMode ? 'Gesamt-Turn eintragen' : '3-Dart Turn eintragen'}
           </button>
         </div>
 
