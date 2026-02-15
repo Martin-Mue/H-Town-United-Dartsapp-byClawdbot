@@ -53,17 +53,6 @@ export function TrainingPage() {
   const [trainingSegment, setTrainingSegment] = useState<number>(20);
   const [trainingThrows, setTrainingThrows] = useState<Array<{ base: number; mult: 1 | 2 | 3; points: number }>>([]);
 
-  const [attempts, setAttempts] = useState(30);
-  const [hits, setHits] = useState(10);
-  const [highestReached, setHighestReached] = useState(12);
-  const [dartsUsed, setDartsUsed] = useState(45);
-  const [checkoutsCompleted, setCheckoutsCompleted] = useState(3);
-  const [checkoutAttempts, setCheckoutAttempts] = useState(10);
-  const [avgDartsForCheckout, setAvgDartsForCheckout] = useState(4);
-  const [wonScenarios, setWonScenarios] = useState(4);
-  const [scenarioCount, setScenarioCount] = useState(10);
-  const [t20Hits, setT20Hits] = useState(20);
-  const [t20Darts, setT20Darts] = useState(100);
 
   const players = useMemo<ManagedPlayer[]>(() => {
     try {
@@ -95,36 +84,54 @@ export function TrainingPage() {
     }).filter((rule) => (ruleFilter === 'all' ? true : rule.kind === ruleFilter));
   }, [ruleFilter]);
 
+
+  const autoMetrics = useMemo(() => {
+    const darts = trainingThrows;
+    const attempts = darts.length;
+    const hits = darts.filter((d) => d.mult === 2 && d.base > 0).length;
+    const highestReached = attempts > 0 ? Math.max(...darts.map((d) => (d.base >= 1 && d.base <= 20 ? d.base : 1))) : 0;
+    const dartsUsed = attempts;
+    const checkoutAttempts = Math.max(1, Math.floor(attempts / 3));
+    const checkoutsCompleted = darts.filter((d) => d.mult === 2 || d.base === 50).length;
+    const avgDartsForCheckout = attempts > 0 ? Math.max(1, Math.min(9, Math.round(attempts / Math.max(1, checkoutsCompleted)))) : 9;
+    const scenarioCount = Math.max(1, Math.floor(attempts / 3));
+    const wonScenarios = Math.floor(darts.filter((d) => d.points >= 40).length / 2);
+    const t20Hits = darts.filter((d) => d.base === 20 && d.mult === 3).length;
+    const t20Darts = attempts;
+
+    return { attempts, hits, highestReached, dartsUsed, checkoutAttempts, checkoutsCompleted, avgDartsForCheckout, scenarioCount, wonScenarios, t20Hits, t20Darts, hasData: attempts > 0 };
+  }, [trainingThrows]);
+
   const computeScore = (drill: TrainingDrill): { score: number; metrics: Record<string, number> } => {
     switch (drill.id) {
       case 'doubles': {
-        const ratio = Math.max(0, Math.min(1, hits / Math.max(1, attempts)));
-        const sampleQuality = Math.max(0.6, Math.min(1, attempts / 30));
-        return { score: Math.round(ratio * 100 * sampleQuality), metrics: { attempts, hits } };
+        const ratio = Math.max(0, Math.min(1, autoMetrics.hits / Math.max(1, autoMetrics.attempts)));
+        const sampleQuality = Math.max(0.6, Math.min(1, autoMetrics.attempts / 30));
+        return { score: Math.round(ratio * 100 * sampleQuality), metrics: { attempts: autoMetrics.attempts, hits: autoMetrics.hits } };
       }
       case 'clock': {
-        const progress = Math.max(0, Math.min(20, highestReached));
+        const progress = Math.max(0, Math.min(20, autoMetrics.highestReached));
         const parDarts = Math.max(1, progress * 3);
-        const efficiency = Math.max(0, Math.min(1, parDarts / Math.max(parDarts, dartsUsed)));
-        return { score: Math.round((progress / 20) * 75 + efficiency * 25), metrics: { highestReached, dartsUsed } };
+        const efficiency = Math.max(0, Math.min(1, parDarts / Math.max(parDarts, autoMetrics.dartsUsed)));
+        return { score: Math.round((progress / 20) * 75 + efficiency * 25), metrics: { highestReached: autoMetrics.highestReached, dartsUsed: autoMetrics.dartsUsed } };
       }
       case 'finish': {
-        const success = checkoutsCompleted / Math.max(1, checkoutAttempts);
-        const speedBonus = Math.max(0, Math.min(1, (6 - avgDartsForCheckout) / 3));
-        return { score: Math.round(success * 75 + speedBonus * 25), metrics: { checkoutsCompleted, checkoutAttempts, avgDartsForCheckout } };
+        const success = autoMetrics.checkoutsCompleted / Math.max(1, autoMetrics.checkoutAttempts);
+        const speedBonus = Math.max(0, Math.min(1, (6 - autoMetrics.avgDartsForCheckout) / 3));
+        return { score: Math.round(success * 75 + speedBonus * 25), metrics: { checkoutsCompleted: autoMetrics.checkoutsCompleted, checkoutAttempts: autoMetrics.checkoutAttempts, avgDartsForCheckout: autoMetrics.avgDartsForCheckout } };
       }
       case 'pressure': {
-        const clutch = wonScenarios / Math.max(1, scenarioCount);
-        const stabilityBonus = Math.max(0.7, Math.min(1, scenarioCount / 12));
-        return { score: Math.round(clutch * 100 * stabilityBonus), metrics: { wonScenarios, scenarioCount } };
+        const clutch = autoMetrics.wonScenarios / Math.max(1, autoMetrics.scenarioCount);
+        const stabilityBonus = Math.max(0.7, Math.min(1, autoMetrics.scenarioCount / 12));
+        return { score: Math.round(clutch * 100 * stabilityBonus), metrics: { wonScenarios: autoMetrics.wonScenarios, scenarioCount: autoMetrics.scenarioCount } };
       }
       case 'random': {
-        const solved = checkoutsCompleted / Math.max(1, checkoutAttempts);
-        return { score: Math.round(solved * 100), metrics: { solved: checkoutsCompleted, tasks: checkoutAttempts } };
+        const solved = autoMetrics.checkoutsCompleted / Math.max(1, autoMetrics.checkoutAttempts);
+        return { score: Math.round(solved * 100), metrics: { solved: autoMetrics.checkoutsCompleted, tasks: autoMetrics.checkoutAttempts } };
       }
       case 't20': {
-        const hitRate = t20Hits / Math.max(1, t20Darts);
-        return { score: Math.round(hitRate * 100), metrics: { t20Hits, t20Darts } };
+        const hitRate = autoMetrics.t20Hits / Math.max(1, autoMetrics.t20Darts);
+        return { score: Math.round(hitRate * 100), metrics: { t20Hits: autoMetrics.t20Hits, t20Darts: autoMetrics.t20Darts } };
       }
       default:
         return { score: 0, metrics: {} };
@@ -157,22 +164,6 @@ export function TrainingPage() {
     if (trainingThrows.length >= 120) return;
     const points = trainingSegment === 50 ? 50 : Math.min(60, trainingSegment * trainingMultiplier);
     setTrainingThrows((prev) => [...prev, { base: trainingSegment, mult: trainingMultiplier, points }]);
-  };
-
-  const applyThrowMetrics = () => {
-    if (trainingThrows.length === 0) return;
-    const darts = trainingThrows;
-    setAttempts(darts.length);
-    setHits(darts.filter((d) => d.mult === 2 && d.base > 0).length);
-    setHighestReached(Math.max(1, ...darts.map((d) => (d.base >= 1 && d.base <= 20 ? d.base : 1))));
-    setDartsUsed(darts.length);
-    setCheckoutsCompleted(darts.filter((d) => d.mult === 2 || d.base === 50).length);
-    setCheckoutAttempts(Math.max(1, Math.floor(darts.length / 3)));
-    setAvgDartsForCheckout(Math.max(1, Math.min(9, Math.round(darts.length / Math.max(1, Math.floor(darts.length / 9))))));
-    setWonScenarios(Math.floor(darts.filter((d) => d.points >= 40).length / 2));
-    setScenarioCount(Math.max(1, Math.floor(darts.length / 3)));
-    setT20Hits(darts.filter((d) => d.base === 20 && d.mult === 3).length);
-    setT20Darts(darts.length);
   };
 
   const completeSession = () => {
@@ -215,7 +206,7 @@ export function TrainingPage() {
     setSelectedDrill(null);
   };
 
-  const drillScorePreview = selectedDrill ? computeScore(selectedDrill).score : 0;
+  const drillScorePreview = selectedDrill && autoMetrics.hasData ? computeScore(selectedDrill).score : null;
 
   if (selectedDrill) {
     return (
@@ -271,61 +262,29 @@ export function TrainingPage() {
               <button onClick={() => setTrainingSegment(50)} className="rounded bg-slate-800 p-1 text-xs">Bullseye</button>
             </div>
 
-            <div className="grid grid-cols-2 gap-1">
-              <button onClick={addTrainingDart} className="rounded bg-slate-800 p-1.5 text-xs">Dart hinzufügen</button>
-              <button onClick={applyThrowMetrics} className="rounded bg-sky-400 p-1.5 text-xs font-semibold text-slate-900">Wurfdaten übernehmen</button>
-            </div>
+            <button onClick={addTrainingDart} className="w-full rounded bg-slate-800 p-1.5 text-xs">Dart hinzufügen</button>
             <p className="text-[11px] muted-text">Darts: {trainingThrows.length} · Letzter: {trainingThrows.at(-1) ? `${trainingThrows.at(-1)?.base}x${trainingThrows.at(-1)?.mult}` : '—'}</p>
           </div>
 
-          {selectedDrill.id === 'doubles' && (
-            <>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <NumberField label="Versuche" value={attempts} setValue={setAttempts} />
-                <NumberField label="Treffer" value={hits} setValue={setHits} />
-              </div>
-              <p className="text-[11px] muted-text">Doubles-Modus misst reale Doppelquote (Treffer / Versuche).</p>
-            </>
-          )}
-
-          {selectedDrill.id === 'clock' && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <NumberField label="Höchste Zahl" value={highestReached} setValue={setHighestReached} min={1} max={20} />
-              <NumberField label="Benötigte Darts" value={dartsUsed} setValue={setDartsUsed} min={1} max={200} />
-            </div>
-          )}
-
-          {(selectedDrill.id === 'finish' || selectedDrill.id === 'random') && (
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <NumberField label="Erfolgreiche Checkouts" value={checkoutsCompleted} setValue={setCheckoutsCompleted} />
-              <NumberField label="Checkout Versuche" value={checkoutAttempts} setValue={setCheckoutAttempts} />
-              {selectedDrill.id === 'finish' && <NumberField label="Ø Darts pro Checkout" value={avgDartsForCheckout} setValue={setAvgDartsForCheckout} min={1} max={9} />}
-            </div>
-          )}
-
-          {selectedDrill.id === 'pressure' && (
-            <>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <NumberField label="Gewonnene Szenarien" value={wonScenarios} setValue={setWonScenarios} />
-                <NumberField label="Szenarien gesamt" value={scenarioCount} setValue={setScenarioCount} />
-              </div>
-              <p className="text-[11px] muted-text">Pressure misst Decider-/Drucksituationen: gewonnene Szenarien ÷ gesamt.</p>
-            </>
-          )}
-
-          {selectedDrill.id === 't20' && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <NumberField label="T20 Treffer" value={t20Hits} setValue={setT20Hits} />
-              <NumberField label="Gesamt Darts" value={t20Darts} setValue={setT20Darts} />
-            </div>
-          )}
-
-          <div className="rounded-lg bg-slate-800 p-2 text-xs muted-text">
-            <p>Berechneter Trainingsscore: <span className="primary-text font-semibold">{drillScorePreview}</span>/100</p>
-            <p className="mt-1">Interpretation: &lt;40 = klarer Trainingsbedarf · 40-70 = solide Basis · &gt;70 = stark.</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <ReadOnlyField label="Versuche (automatisch)" value={autoMetrics.attempts} />
+            <ReadOnlyField label="Double-Treffer (automatisch)" value={autoMetrics.hits} />
+            <ReadOnlyField label="Höchste Zahl (automatisch)" value={autoMetrics.highestReached} />
+            <ReadOnlyField label="Benötigte Darts (automatisch)" value={autoMetrics.dartsUsed} />
+            <ReadOnlyField label="Checkout-Versuche (automatisch)" value={autoMetrics.checkoutAttempts} />
+            <ReadOnlyField label="Erfolgreiche Checkouts (automatisch)" value={autoMetrics.checkoutsCompleted} />
+            <ReadOnlyField label="Pressure Szenarien (automatisch)" value={autoMetrics.scenarioCount} />
+            <ReadOnlyField label="Gewonnene Pressure-Szenarien" value={autoMetrics.wonScenarios} />
+            <ReadOnlyField label="T20 Treffer (automatisch)" value={autoMetrics.t20Hits} />
+            <ReadOnlyField label="T20 Darts (automatisch)" value={autoMetrics.t20Darts} />
           </div>
 
-          <button disabled={!selectedPlayerId} onClick={completeSession} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-60">
+          <div className="rounded-lg bg-slate-800 p-2 text-xs muted-text">
+            <p>Berechneter Trainingsscore: <span className="primary-text font-semibold">{drillScorePreview ?? "—"}</span>{drillScorePreview !== null ? "/100" : ""}</p>
+            <p className="mt-1">Interpretation: erst nach erfassten Darts sinnvoll. &lt;40 = Trainingsbedarf · 40-70 = solide Basis · &gt;70 = stark.</p>
+          </div>
+
+          <button disabled={!selectedPlayerId || !autoMetrics.hasData} onClick={completeSession} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-60">
             <Play size={16} /> Training abschließen
           </button>
         </div>
@@ -424,18 +383,11 @@ export function TrainingPage() {
   );
 }
 
-function NumberField({ label, value, setValue, min = 0, max = 999 }: { label: string; value: number; setValue: (v: number) => void; min?: number; max?: number }) {
+function ReadOnlyField({ label, value }: { label: string; value: number }) {
   return (
-    <label className="rounded-lg bg-slate-800 p-2">
+    <div className="rounded-lg bg-slate-800 p-2">
       <span className="block muted-text mb-1">{label}</span>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        onChange={(e) => setValue(Math.max(min, Math.min(max, Number(e.target.value || 0))))}
-        className="w-full rounded bg-slate-700 p-1"
-      />
-    </label>
+      <p className="rounded bg-slate-700 p-1 font-semibold">{value}</p>
+    </div>
   );
 }
