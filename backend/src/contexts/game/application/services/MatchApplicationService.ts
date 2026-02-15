@@ -51,6 +51,23 @@ export class MatchApplicationService {
     return this.toStateDto(match);
   }
 
+  /** Registers one cricket throw and emits resulting domain events. */
+  public async registerCricketTurn(request: {
+    matchId: string;
+    targetNumber: number;
+    multiplier: 1 | 2 | 3;
+  }): Promise<MatchStateDto> {
+    const match = await this.matchRepository.findById(request.matchId);
+    if (!match) throw new Error('Match was not found.');
+
+    match.registerCricketTurn(request.targetNumber, request.multiplier);
+
+    await this.matchRepository.save(match);
+    await this.eventBus.publish(match.pullDomainEvents());
+
+    return this.toStateDto(match);
+  }
+
   /** Returns current read model representation of one match by id. */
   public async getMatchState(matchId: string): Promise<MatchStateDto> {
     const match = await this.matchRepository.findById(matchId);
@@ -76,9 +93,19 @@ export class MatchApplicationService {
         playerId: player.playerId,
         displayName: player.displayName,
         score: player.score,
+        cricketScore: match.getCricketScore(player.playerId),
         average: Number(player.getThreeDartAverage().toFixed(2)),
         checkoutPercentage: Number(player.getCheckoutPercentage().toFixed(2)),
         highestTurnScore: player.highestTurnScore,
+        cricketMarks: {
+          m15: match.getCricketMarks(player.playerId, 15),
+          m16: match.getCricketMarks(player.playerId, 16),
+          m17: match.getCricketMarks(player.playerId, 17),
+          m18: match.getCricketMarks(player.playerId, 18),
+          m19: match.getCricketMarks(player.playerId, 19),
+          m20: match.getCricketMarks(player.playerId, 20),
+          bull: match.getCricketMarks(player.playerId, 25),
+        },
       })),
       scoreboard: players.map((player) => ({
         playerId: player.playerId,

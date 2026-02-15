@@ -7,9 +7,19 @@ export interface MatchStateDto {
     playerId: string;
     displayName: string;
     score: number;
+    cricketScore: number;
     average: number;
     checkoutPercentage: number;
     highestTurnScore: number;
+    cricketMarks: {
+      m15: number;
+      m16: number;
+      m17: number;
+      m18: number;
+      m19: number;
+      m20: number;
+      bull: number;
+    };
   }>;
   scoreboard: Array<{
     playerId: string;

@@ -1,12 +1,14 @@
 import { AggregateRoot } from '../../../../shared/domain/AggregateRoot.js';
 import { LegWonEvent } from '../events/LegWonEvent.js';
+import { CricketBoardState } from '../entities/CricketBoardState.js';
 import { MatchScoreboard } from '../entities/MatchScoreboard.js';
 import { PlayerLegState } from '../entities/PlayerLegState.js';
+import { CricketScoringService } from '../services/CricketScoringService.js';
 import type { MatchConfiguration } from '../value-objects/MatchConfiguration.js';
 
 /**
- * Aggregate root handling full match flow for x01 modes.
- * Encapsulates bust logic, final-dart checkout constraints, leg/set progression and match winner resolution.
+ * Aggregate root handling full match flow for x01 and cricket modes.
+ * Encapsulates bust logic, checkout constraints, cricket board state and winner resolution.
  */
 export class DartsMatchAggregate extends AggregateRoot {
   private players: PlayerLegState[];
@@ -15,6 +17,8 @@ export class DartsMatchAggregate extends AggregateRoot {
   private legNumber = 1;
   private winnerPlayerId: string | null = null;
   private readonly scoreboard: MatchScoreboard;
+  private readonly cricketBoardState: CricketBoardState;
+  private readonly cricketScores = new Map<string, number>();
 
   constructor(
     public readonly matchId: string,
@@ -27,6 +31,8 @@ export class DartsMatchAggregate extends AggregateRoot {
     this.activePlayerIndex = this.playerOrder.findIndex((id) => id === configuration.startingPlayerId);
     if (this.activePlayerIndex < 0) this.activePlayerIndex = 0;
     this.scoreboard = new MatchScoreboard(this.playerOrder);
+    this.cricketBoardState = new CricketBoardState(this.playerOrder);
+    this.playerOrder.forEach((id) => this.cricketScores.set(id, 0));
   }
 
   /** Returns immutable player leg states. */
@@ -44,9 +50,20 @@ export class DartsMatchAggregate extends AggregateRoot {
     return this.scoreboard;
   }
 
-  /** Applies one turn and enforces bust/final-dart checkout constraints. */
+  /** Returns cricket points score for one player. */
+  public getCricketScore(playerId: string): number {
+    return this.cricketScores.get(playerId) ?? 0;
+  }
+
+  /** Returns cricket marks count for one player and number. */
+  public getCricketMarks(playerId: string, targetNumber: number): number {
+    return this.cricketBoardState.getMarks(playerId, targetNumber);
+  }
+
+  /** Applies one turn and enforces bust/final-dart checkout constraints for x01 modes. */
   public registerTurn(points: number, finalDartMultiplier: 1 | 2 | 3): void {
     if (this.winnerPlayerId) return;
+    if (this.configuration.mode === 'CRICKET') return;
 
     const player = this.getActivePlayer();
     const remaining = player.score - points;
@@ -71,6 +88,35 @@ export class DartsMatchAggregate extends AggregateRoot {
       }
 
       this.startNextLeg();
+      return;
+    }
+
+    this.moveToNextPlayer();
+  }
+
+  /** Applies a cricket throw and resolves scoring, closure, and match winner rules. */
+  public registerCricketTurn(targetNumber: number, multiplier: 1 | 2 | 3): void {
+    if (this.winnerPlayerId) return;
+    if (this.configuration.mode !== 'CRICKET') return;
+
+    const player = this.getActivePlayer();
+    const service = new CricketScoringService(this.cricketBoardState);
+    const opponents = this.playerOrder.filter((id) => id !== player.playerId);
+
+    const result = service.applyThrow({
+      playerId: player.playerId,
+      opponentIds: opponents,
+      targetNumber,
+      multiplier,
+    });
+
+    this.cricketScores.set(player.playerId, (this.cricketScores.get(player.playerId) ?? 0) + result.awardedPoints);
+
+    const playerScore = this.getCricketScore(player.playerId);
+    const topOpponentScore = Math.max(...opponents.map((id) => this.getCricketScore(id)));
+    if (result.playerClosedBoard && playerScore >= topOpponentScore) {
+      this.winnerPlayerId = player.playerId;
+      this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
       return;
     }
 

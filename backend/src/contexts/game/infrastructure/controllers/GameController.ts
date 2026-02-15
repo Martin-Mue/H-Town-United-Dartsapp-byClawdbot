@@ -54,5 +54,30 @@ export class GameController {
       });
       return reply.code(200).send(state);
     });
+
+    app.post('/api/game/matches/:matchId/turns/cricket', async (request, reply) => {
+      const params = z.object({ matchId: z.string() }).parse(request.params);
+      const body = z
+        .object({
+          targetNumber: z.union([
+            z.literal(15),
+            z.literal(16),
+            z.literal(17),
+            z.literal(18),
+            z.literal(19),
+            z.literal(20),
+            z.literal(25),
+          ]),
+          multiplier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+        })
+        .parse(request.body);
+
+      const state = await this.matchApplicationService.registerCricketTurn({
+        matchId: params.matchId,
+        targetNumber: body.targetNumber,
+        multiplier: body.multiplier,
+      });
+      return reply.code(200).send(state);
+    });
   }
 }
