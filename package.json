@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:platform": "concurrently \"npm run dev:api\" \"npm run dev:web\""
   },
   "dependencies": {
     "expo": "~54.0.33",
@@ -16,6 +19,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "concurrently": "^9.1.2",
     "typescript": "~5.9.2"
   },
   "private": true

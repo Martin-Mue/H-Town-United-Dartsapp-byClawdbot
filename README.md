@@ -9,6 +9,14 @@ Production-oriented full-stack scaffold implementing DDD and clean architecture.
 
 ## Quick Start
 
+### One-command local platform start (recommended)
+```bash
+cd /home/martin/.openclaw/workspace/darts-mobile
+npm install
+npm run dev:platform
+```
+This starts backend (`:8080`) and frontend (`:5173`) together.
+
 ### Backend
 ```bash
 cd backend
