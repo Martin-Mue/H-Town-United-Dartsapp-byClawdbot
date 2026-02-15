@@ -131,9 +131,9 @@ export function PlayersPage() {
         membershipStatus: statusInput,
         preferredCheckoutMode: modeInput,
         notes: '',
-        currentAverage: 50,
-        checkoutPercentage: 20,
-        pressurePerformanceIndex: 50,
+        currentAverage: 0,
+        checkoutPercentage: 0,
+        pressurePerformanceIndex: 0,
         total180s: 0,
         avatarUrl: finalAvatar || sourcePhotoInput || '',
       },
@@ -239,7 +239,7 @@ export function PlayersPage() {
               <img src={player.avatarUrl || '/branding/h-town-united-logo-tree.jpg'} className="h-12 w-12 rounded-lg object-cover" />
               <div className="min-w-0">
                 <p className="font-semibold truncate">{player.displayName}</p>
-                <p className="text-xs muted-text">Ø {player.currentAverage} · {player.checkoutPercentage}% Siege · {player.total180s}x 180</p>
+                <p className="text-xs muted-text">Ø {player.currentAverage} · Checkout {player.checkoutPercentage}% · {player.total180s}x 180</p>
                 <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="mt-1 text-[11px] primary-text flex items-center gap-1">
                   <Sparkles size={12} /> KI-Bild generieren
                 </button>
