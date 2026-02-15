@@ -9,7 +9,6 @@ export function NewGamePage() {
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<GameMode>('X01_501');
-  const [eventName, setEventName] = useState('H-Town Match Night');
   const [legsPerSet, setLegsPerSet] = useState(3);
   const [setsToWin, setSetsToWin] = useState(2);
   const [playerOneName, setPlayerOneName] = useState('Spieler 1');
@@ -36,7 +35,6 @@ export function NewGamePage() {
       });
 
       window.localStorage.setItem('htown-active-match-id', state.matchId);
-      window.localStorage.setItem(`htown-match-meta-${state.matchId}`, JSON.stringify({ eventName, mode }));
       navigate(`/match/${state.matchId}`);
     } catch {
       setErrorMessage('Match creation failed. Bitte Backend auf localhost:8080 starten.');
@@ -49,18 +47,8 @@ export function NewGamePage() {
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <article className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Spiel erstellen</h2>
-        <p className="text-xs muted-text mt-1">Lege Turniername, Modus und Spieler fest.</p>
+        <p className="text-xs muted-text mt-1">Wähle Modus, Spieler und Checkout-Regeln.</p>
       </article>
-
-      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
-        <label className="text-xs muted-text">Turnier-/Eventname</label>
-        <input
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-          className="w-full rounded-xl bg-slate-800 p-3"
-          placeholder="z.B. Freitag Ligaabend"
-        />
-      </div>
 
       <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
         <h3 className="text-sm uppercase flex items-center gap-2"><Target size={14} /> Spielmodus</h3>

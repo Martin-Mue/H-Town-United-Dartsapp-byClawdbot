@@ -9,6 +9,7 @@ export class TournamentModeService {
     return new TournamentAggregate(
       tournamentId,
       'Round Configurable Tournament',
+      'SINGLE_ELIMINATION',
       [
         new TournamentRound(1, 'X01_301', []),
         new TournamentRound(2, 'X01_501', []),

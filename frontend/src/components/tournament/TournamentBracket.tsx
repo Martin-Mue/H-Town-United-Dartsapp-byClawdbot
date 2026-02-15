@@ -10,7 +10,7 @@ export type TournamentRound = {
   matches: TournamentMatch[];
 };
 
-/** Renders tournament bracket with round mode display and winner progression actions. */
+/** Renders polished horizontal tournament bracket with visible match results and winner selectors. */
 export function TournamentBracket({
   rounds,
   onSelectWinner,
@@ -19,38 +19,47 @@ export function TournamentBracket({
   onSelectWinner: (roundNumber: number, fixtureIndex: number, winner: string) => void;
 }) {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {rounds.map((round) => (
-        <div key={round.roundNumber} className="min-w-56 space-y-2 rounded-xl card-bg p-3">
-          <h3 className="text-sm font-semibold">Round {round.roundNumber}</h3>
-          <p className="text-xs muted-text">Mode: {round.mode.replace('_', ' ')}</p>
-
-          {round.matches.map((match, fixtureIndex) => (
-            <div key={`${round.roundNumber}-${fixtureIndex}`} className="rounded-lg bg-slate-800 p-2 text-xs text-slate-200 space-y-2">
-              <div className="font-semibold">{match.homePlayerId} vs {match.awayPlayerId}</div>
-
-              {match.winnerPlayerId ? (
-                <div className="rounded bg-emerald-900/40 p-1 text-emerald-200">Winner: {match.winnerPlayerId}</div>
-              ) : (
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)}
-                    className="rounded bg-slate-700 p-1"
-                  >
-                    {match.homePlayerId}
-                  </button>
-                  <button
-                    onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)}
-                    className="rounded bg-slate-700 p-1"
-                  >
-                    {match.awayPlayerId}
-                  </button>
-                </div>
-              )}
+    <div className="overflow-x-auto pb-3">
+      <div className="flex items-start gap-6 min-w-max">
+        {rounds.map((round, roundIndex) => (
+          <div key={round.roundNumber} className="w-72 space-y-3">
+            <div className="rounded-xl border soft-border hero-gradient p-3">
+              <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
+              <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
             </div>
-          ))}
-        </div>
-      ))}
+
+            {round.matches.map((match, fixtureIndex) => (
+              <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative rounded-xl border soft-border card-bg p-3">
+                <div className="space-y-1 text-xs">
+                  <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
+                  <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
+                </div>
+
+                {match.winnerPlayerId ? (
+                  <p className="mt-2 rounded bg-emerald-900/40 px-2 py-1 text-[11px] text-emerald-200">Ergebnis: {match.winnerPlayerId}</p>
+                ) : (
+                  <div className="mt-2 grid grid-cols-2 gap-1">
+                    <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
+                      {match.homePlayerId}
+                    </button>
+                    <button onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)} className="rounded bg-slate-800 p-1 text-[11px]">
+                      {match.awayPlayerId}
+                    </button>
+                  </div>
+                )}
+
+                {roundIndex < rounds.length - 1 && (
+                  <div className="pointer-events-none absolute -right-6 top-1/2 h-px w-6 bg-slate-600" />
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
+}
+
+function PlayerLine({ name, winner }: { name: string; winner: boolean }) {
+  return <div className={`rounded p-1 ${winner ? 'bg-emerald-900/30 text-emerald-200' : 'bg-slate-800'}`}>{name}</div>;
 }

@@ -10,7 +10,7 @@ import { InMemoryMatchRepository } from './contexts/game/infrastructure/reposito
 import { JwtTokenService } from './contexts/identity/application/services/JwtTokenService.js';
 import { TournamentApplicationService } from './contexts/tournament/application/services/TournamentApplicationService.js';
 import { TournamentController } from './contexts/tournament/infrastructure/controllers/TournamentController.js';
-import { InMemoryTournamentRepository } from './contexts/tournament/infrastructure/repositories/InMemoryTournamentRepository.js';
+import { FileTournamentRepository } from './contexts/tournament/infrastructure/repositories/FileTournamentRepository.js';
 import { CompositeEventBus } from './shared/infrastructure/CompositeEventBus.js';
 import { InMemoryEventBus } from './shared/infrastructure/InMemoryEventBus.js';
 import { SocketIoEventBus } from './shared/infrastructure/SocketIoEventBus.js';
@@ -61,12 +61,18 @@ export async function createApp(): Promise<FastifyInstance> {
     ],
   });
 
-  const tournamentService = new TournamentApplicationService(new InMemoryTournamentRepository());
-  await tournamentService.createTournament({
-    name: 'H-Town Open',
-    participants: ['Player A', 'Player B', 'Player C', 'Player D'],
-    roundModes: ['X01_301', 'X01_501', 'CUSTOM'],
-  });
+  const tournamentService = new TournamentApplicationService(
+    new FileTournamentRepository(process.env.TOURNAMENT_STORE_FILE ?? 'backend/data/tournaments.json'),
+  );
+
+  if ((await tournamentService.listTournaments()).length === 0) {
+    await tournamentService.createTournament({
+      name: 'H-Town Open',
+      format: 'SINGLE_ELIMINATION',
+      participants: ['Player A', 'Player B', 'Player C', 'Player D'],
+      roundModes: ['X01_301', 'X01_501', 'CUSTOM'],
+    });
+  }
 
   const tokenService = new JwtTokenService(process.env.JWT_SECRET ?? 'dev-secret');
 

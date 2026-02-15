@@ -12,6 +12,7 @@ export class TournamentController {
     app.post('/api/tournaments', async (request, reply) => {
       const body = z.object({
         name: z.string().min(1),
+        format: z.enum(['SINGLE_ELIMINATION', 'ROUND_ROBIN']).default('SINGLE_ELIMINATION'),
         participants: z.array(z.string().min(1)).min(2),
         roundModes: z.array(z.enum(['X01_301', 'X01_501', 'CRICKET', 'CUSTOM'])).min(1),
       }).parse(request.body);

@@ -1,8 +1,13 @@
 export type RoundMode = 'X01_301' | 'X01_501' | 'CRICKET' | 'CUSTOM';
+export type TournamentFormat = 'SINGLE_ELIMINATION' | 'ROUND_ROBIN';
 
 export interface TournamentStateDto {
   tournamentId: string;
   name: string;
+  format: TournamentFormat;
+  championPlayerId: string | null;
+  isCompleted: boolean;
+  updatedAt: string;
   rounds: Array<{
     roundNumber: number;
     mode: RoundMode;
@@ -20,7 +25,7 @@ export class TournamentApiClient {
     return response.json();
   }
 
-  async createTournament(payload: { name: string; participants: string[]; roundModes: RoundMode[] }): Promise<TournamentStateDto> {
+  async createTournament(payload: { name: string; format: TournamentFormat; participants: string[]; roundModes: RoundMode[] }): Promise<TournamentStateDto> {
     const response = await fetch(`${this.baseUrl}/api/tournaments`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
