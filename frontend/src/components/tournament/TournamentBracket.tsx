@@ -87,7 +87,6 @@ export function TournamentBracket({
                       </>
                     )}
 
-                    {roundIndex > 0 && <div className="pointer-events-none absolute -left-16 top-1/2 h-px w-16 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-16 top-1/2 h-px w-16 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && fixtureIndex % 2 === 0 && fixtureIndex + 1 < paddedMatches.length && (
                       <div
