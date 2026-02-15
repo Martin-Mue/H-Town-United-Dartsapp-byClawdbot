@@ -164,6 +164,13 @@ export function TournamentsPage() {
           <p><span className="primary-text font-semibold">Play-In Quali:</span> Es gibt Vorquali-Duelle für letzte Hauptfeldplätze, statt nur automatische Freilose.</p>
         </div>
 
+        <div className="rounded-lg border soft-border bg-slate-900/60 p-3 text-[11px] space-y-1">
+          <p className="uppercase muted-text">Legende Seed-Optionen</p>
+          <p><span className="primary-text font-semibold">Seed random:</span> Teilnehmer werden zufällig im Bracket verteilt (Losverfahren).</p>
+          <p><span className="primary-text font-semibold">Seed Ranking:</span> Setzung nach Rangliste/ELO, damit Top-Spieler später aufeinandertreffen.</p>
+          <p><span className="primary-text font-semibold">Seed manuell:</span> Startpositionen/Paarungen werden manuell durch euch festgelegt.</p>
+        </div>
+
         <button onClick={() => setAllowRoundModeSwitch((v) => !v)} className="rounded bg-slate-800 p-2 text-xs text-left">
           Rundenmodus veränderbar: <span className="primary-text">{allowRoundModeSwitch ? 'Ja' : 'Nein'}</span>
         </button>
