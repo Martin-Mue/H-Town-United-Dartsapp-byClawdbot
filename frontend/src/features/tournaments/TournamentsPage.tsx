@@ -157,18 +157,20 @@ export function TournamentsPage() {
           <input type="number" min={1} max={9} value={defaultSetsToWin} onChange={(e) => setDefaultSetsToWin(Number(e.target.value || 1))} className="rounded bg-slate-800 p-2" placeholder="Sets to Win" />
         </div>
 
-        <div className="rounded-lg border soft-border bg-slate-900/60 p-3 text-[11px] space-y-1">
-          <p className="uppercase muted-text">Legende Freilos-Optionen</p>
-          <p><span className="primary-text font-semibold">Freilos Runde 1:</span> Alle Freilose liegen in Runde 1. Manche Spieler steigen direkt in Runde 2 ein.</p>
-          <p><span className="primary-text font-semibold">Freilos verteilt:</span> Freilose werden über den Baum verteilt, damit nicht alles auf einer Bracket-Seite hängt.</p>
-          <p><span className="primary-text font-semibold">Play-In Quali:</span> Es gibt Vorquali-Duelle für letzte Hauptfeldplätze, statt nur automatische Freilose.</p>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="rounded-lg border soft-border bg-slate-900/60 p-3 text-[11px] space-y-1">
+            <p className="uppercase muted-text">Legende Freilos-Optionen</p>
+            <p><span className="primary-text font-semibold">Freilos Runde 1:</span> Alle Freilose liegen in Runde 1. Manche Spieler steigen direkt in Runde 2 ein.</p>
+            <p><span className="primary-text font-semibold">Freilos verteilt:</span> Freilose werden über den Baum verteilt, damit nicht alles auf einer Bracket-Seite hängt.</p>
+            <p><span className="primary-text font-semibold">Play-In Quali:</span> Es gibt Vorquali-Duelle für letzte Hauptfeldplätze, statt nur automatische Freilose.</p>
+          </div>
 
-        <div className="rounded-lg border soft-border bg-slate-900/60 p-3 text-[11px] space-y-1">
-          <p className="uppercase muted-text">Legende Seed-Optionen</p>
-          <p><span className="primary-text font-semibold">Seed random:</span> Teilnehmer werden zufällig im Bracket verteilt (Losverfahren).</p>
-          <p><span className="primary-text font-semibold">Seed Ranking:</span> Setzung nach Rangliste/ELO, damit Top-Spieler später aufeinandertreffen.</p>
-          <p><span className="primary-text font-semibold">Seed manuell:</span> Startpositionen/Paarungen werden manuell durch euch festgelegt.</p>
+          <div className="rounded-lg border soft-border bg-slate-900/60 p-3 text-[11px] space-y-1">
+            <p className="uppercase muted-text">Legende Seed-Optionen</p>
+            <p><span className="primary-text font-semibold">Seed random:</span> Teilnehmer werden zufällig im Bracket verteilt (Losverfahren).</p>
+            <p><span className="primary-text font-semibold">Seed Ranking:</span> Setzung nach Rangliste/ELO, damit Top-Spieler später aufeinandertreffen.</p>
+            <p><span className="primary-text font-semibold">Seed manuell:</span> Startpositionen/Paarungen werden manuell durch euch festgelegt.</p>
+          </div>
         </div>
 
         <button onClick={() => setAllowRoundModeSwitch((v) => !v)} className="rounded bg-slate-800 p-2 text-xs text-left">
