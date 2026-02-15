@@ -4,7 +4,10 @@ import { TournamentBracket } from '../../components/tournament/TournamentBracket
 export function TournamentsPage() {
   return (
     <section className="space-y-3">
-      <div className="rounded-2xl bg-panel p-4">Club and cross-club tournaments</div>
+      <div className="rounded-2xl bg-panel p-4 flex items-center gap-3">
+        <img src="/branding/h-town-united-logo-tree.jpg" alt="H-Town logo" className="h-10 w-10 rounded-full border border-slate-500 object-cover" />
+        <span>Club and cross-club tournaments</span>
+      </div>
       <TournamentBracket />
 
       <div className="rounded-2xl bg-panel p-4">

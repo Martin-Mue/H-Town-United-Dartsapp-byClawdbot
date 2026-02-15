@@ -14,6 +14,20 @@ export function DashboardPage() {
 
   return (
     <section className="space-y-3">
+      <article className="rounded-2xl bg-panel p-4 shadow-lg shadow-black/20">
+        <div className="flex items-center gap-3">
+          <img
+            src="/branding/h-town-united-logo-tree.jpg"
+            alt="H-Town United Tree Logo"
+            className="h-16 w-16 rounded-full border-2 border-slate-500 object-cover"
+          />
+          <div>
+            <h2 className="text-base font-semibold">H-Town United e.V.</h2>
+            <p className="text-xs text-slate-400">Tree identity active across the platform design</p>
+          </div>
+        </div>
+      </article>
+
       <button onClick={refresh} className="w-full rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
         {refreshing ? 'Refreshing club dashboard…' : 'Pull to refresh (tap simulation)'}
       </button>
