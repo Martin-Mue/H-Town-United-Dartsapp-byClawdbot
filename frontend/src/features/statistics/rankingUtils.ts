@@ -26,6 +26,7 @@ export type HistoryEntry = {
   winnerPlayerId: string | null;
   winnerName: string | null;
   resultLabel: string;
+  playerTurnScores?: Record<string, number[]>;
 };
 
 export type TournamentStateLite = {

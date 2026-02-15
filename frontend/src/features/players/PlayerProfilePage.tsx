@@ -7,6 +7,7 @@ import { computePlayerRankingStats, type HistoryEntry, type ManagedPlayer } from
 type TournamentStateLite = { championPlayerId: string | null; isCompleted: boolean };
 
 type RecentMatch = HistoryEntry;
+const SCORING_BUCKETS = [45, 60, 80, 100, 120, 140, 160, 180] as const;
 
 export function PlayerProfilePage() {
   const { playerId = '' } = useParams();
@@ -89,6 +90,15 @@ export function PlayerProfilePage() {
   }, [player, elo, recentMatches, tournaments]);
 
   const personalMatches = recentMatches.filter((m) => m.players.some((p) => p.id === player?.id || p.name === player?.displayName));
+
+
+  const personalScoringDistribution = useMemo(() => {
+    if (!player) return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: 0 }));
+    const turns = personalMatches.flatMap((m) => m.playerTurnScores?.[player.id] ?? []);
+    const countAtLeast = (threshold: number) => turns.filter((value) => value >= threshold).length;
+    return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: countAtLeast(bucket) }));
+  }, [personalMatches, player]);
+
 
   if (!player) return <p className="card-bg rounded-xl p-4">Spielerprofil nicht gefunden.</p>;
 
@@ -193,6 +203,19 @@ export function PlayerProfilePage() {
           </div>
         </div>
       )}
+
+
+      <div className="rounded-2xl card-bg border soft-border p-4">
+        <h3 className="text-sm uppercase mb-2">Scoring-Klassen (Match, persistent)</h3>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {personalScoringDistribution.map((row) => (
+            <div key={row.bucket} className="rounded bg-slate-800 p-2 flex items-center justify-between">
+              <span>{row.bucket === 180 ? '180' : `${row.bucket}+`}</span>
+              <span className="primary-text font-semibold">{row.hits}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Trendlinie Trefferbilanz</h3>

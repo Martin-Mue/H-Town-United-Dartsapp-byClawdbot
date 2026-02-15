@@ -17,6 +17,7 @@ type HistoryEntry = {
   winnerPlayerId: string | null;
   winnerName: string | null;
   resultLabel: string;
+  playerTurnScores?: Record<string, number[]>;
 };
 
 type ManagedPlayer = {
@@ -51,6 +52,7 @@ export function MatchLivePage() {
   const [dartCounter, setDartCounter] = useState(0);
   const [matchSettings, setMatchSettings] = useState<{ bullOffEnabled?: boolean; bullOffLimitType?: 'turns' | 'darts'; bullOffLimitValue?: number }>({});
   const [preMatchSeen, setPreMatchSeen] = useState(false);
+  const [playerTurnScores, setPlayerTurnScores] = useState<Record<string, number[]>>({});
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -197,7 +199,7 @@ export function MatchLivePage() {
     setPendingCricket([]);
   };
 
-  const saveHistory = (next: MatchStateDto) => {
+  const saveHistory = (next: MatchStateDto, turnScoresOverride?: Record<string, number[]>) => {
     if (!next.winnerPlayerId) return;
     const winner = next.players.find((p) => p.playerId === next.winnerPlayerId);
     const winnerScore = next.scoreboard.find((s) => s.playerId === next.winnerPlayerId);
@@ -214,6 +216,7 @@ export function MatchLivePage() {
       winnerPlayerId: next.winnerPlayerId,
       winnerName: winner?.displayName ?? null,
       resultLabel,
+      playerTurnScores: turnScoresOverride ?? playerTurnScores,
     };
 
     try {
@@ -252,12 +255,16 @@ export function MatchLivePage() {
 
     try {
       let nextState = state;
+      const activeBefore = state.activePlayerId;
+      let turnScoreForStats = 0;
 
       if (isCricket) {
         if (pendingCricket.length === 0) {
           setErrorMessage('Bitte bis zu 3 Darts hinzufügen.');
           return;
         }
+
+        turnScoreForStats = pendingCricket.reduce((sum, item) => sum + Math.min(60, item.targetNumber * item.multiplier), 0);
 
         for (const throwItem of pendingCricket) {
           nextState = await apiClient.registerCricketTurn(nextState.matchId, throwItem);
@@ -270,6 +277,7 @@ export function MatchLivePage() {
         }
 
         const totalPoints = pendingX01.reduce((sum, dart) => sum + dart.points, 0);
+        turnScoreForStats = totalPoints;
         const finalDartMultiplier = pendingX01[pendingX01.length - 1]?.multiplier ?? 1;
 
         nextState = await apiClient.registerTurn(nextState.matchId, {
@@ -278,13 +286,15 @@ export function MatchLivePage() {
         });
       }
 
+      const updatedTurnScores = { ...playerTurnScores, [activeBefore]: [...(playerTurnScores[activeBefore] ?? []), turnScoreForStats] };
       setState(nextState);
+      setPlayerTurnScores(updatedTurnScores);
       setTurnCounter((t) => t + 1);
       setDartCounter((d) => d + (isCricket ? pendingCricket.length : pendingX01.length));
       clearTurn();
 
       if (nextState.winnerPlayerId) {
-        saveHistory(nextState);
+        saveHistory(nextState, updatedTurnScores);
         await syncTournamentResultIfNeeded(nextState);
         navigate(tournamentId ? '/tournaments' : '/match-summary');
       }
@@ -305,7 +315,7 @@ export function MatchLivePage() {
     if (!state) return;
     const next = await apiClient.registerBullOffWinner(state.matchId, { winnerPlayerId });
     setState(next);
-    saveHistory(next);
+    saveHistory(next, playerTurnScores);
     await syncTournamentResultIfNeeded(next);
     navigate(tournamentId ? '/tournaments' : '/match-summary');
   };

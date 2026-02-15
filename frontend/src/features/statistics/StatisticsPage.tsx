@@ -10,6 +10,7 @@ type AppSettings = { eloRankingEnabled: boolean; autoRankParticipants: boolean; 
 
 const PLAYER_STORAGE_KEY = 'htown-players';
 const SETTINGS_KEY = 'htown-app-settings';
+const SCORING_BUCKETS = [45, 60, 80, 100, 120, 140, 160, 180] as const;
 
 export function StatisticsPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -87,6 +88,14 @@ export function StatisticsPage() {
 
   const completedTournaments = tournaments.filter((t) => t.isCompleted).length;
 
+
+  const scoringDistribution = useMemo(() => {
+    const allTurns = history.flatMap((entry) => Object.values(entry.playerTurnScores ?? {}).flat());
+    const countAtLeast = (threshold: number) => allTurns.filter((v) => v >= threshold).length;
+    return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: countAtLeast(bucket) }));
+  }, [history]);
+
+
   return (
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="hero-gradient rounded-2xl border soft-border p-4">
@@ -137,6 +146,19 @@ export function StatisticsPage() {
             </Link>
           ))}
           {rankingRows.length === 0 && <p className="muted-text">Noch kein Vereinsranking verfügbar.</p>}
+        </div>
+      </div>
+
+
+      <div className="rounded-2xl card-bg border soft-border p-4">
+        <h3 className="text-sm uppercase mb-2">Scoring-Verteilung (persistente Matchdaten)</h3>
+        <div className="space-y-2 text-xs">
+          {scoringDistribution.map((row) => (
+            <div key={row.bucket} className="rounded bg-slate-800 p-2 flex items-center justify-between">
+              <span>{row.bucket === 180 ? '180' : `${row.bucket}+`}</span>
+              <span className="primary-text font-semibold">{row.hits}</span>
+            </div>
+          ))}
         </div>
       </div>
 
