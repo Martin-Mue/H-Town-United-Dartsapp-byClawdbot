@@ -23,13 +23,12 @@ export function TournamentBracket({
   onStartMatch: (roundNumber: number, fixtureIndex: number) => void;
 }) {
   const expectedPerRound = deriveExpectedMatchCounts(rounds);
-  const firstRoundCount = expectedPerRound[0] ?? 1;
   const cardHeightPx = 148;
   const rowGapPx = 12;
 
   return (
     <div className="overflow-x-auto pb-3">
-      <div className="flex items-start gap-4 min-w-max">
+      <div className="flex items-start gap-8 min-w-max">
         {rounds.map((round, roundIndex) => {
           const expectedCount = expectedPerRound[roundIndex] ?? round.matches.length;
           const paddedMatches = Array.from({ length: expectedCount }, (_, idx) =>
@@ -38,17 +37,17 @@ export function TournamentBracket({
 
           const step = 2 ** roundIndex;
           const base = cardHeightPx + rowGapPx;
-          const marginTop = ((step - 1) * base) / 2;
           const columnGapPx = Math.max(rowGapPx, step * base - cardHeightPx);
+          const matchMarginTop = roundIndex === 0 ? 12 : ((step - 1) * base) / 2 + 12;
 
           return (
-            <div key={round.roundNumber} className="w-[280px]" style={{ marginTop }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: `${columnGapPx}px` }}>
+            <div key={round.roundNumber} className="w-[300px]">
               <div className="rounded-xl border soft-border hero-gradient p-3">
                 <p className="text-sm font-semibold uppercase">Round {round.roundNumber}</p>
                 <p className="text-[11px] muted-text">Mode: {round.mode.replace('_', ' ')}</p>
               </div>
 
+              <div style={{ marginTop: `${matchMarginTop}px`, display: 'flex', flexDirection: 'column', gap: `${columnGapPx}px` }}>
               {paddedMatches.map((match, fixtureIndex) => {
                 const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
                 return (
@@ -88,11 +87,11 @@ export function TournamentBracket({
                       </>
                     )}
 
-                    {roundIndex > 0 && <div className="pointer-events-none absolute -left-4 top-1/2 h-px w-4 bg-slate-600" />}
-                    {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-4 top-1/2 h-px w-4 bg-slate-600" />}
+                    {roundIndex > 0 && <div className="pointer-events-none absolute -left-16 top-1/2 h-px w-16 bg-slate-600" />}
+                    {roundIndex < rounds.length - 1 && <div className="pointer-events-none absolute -right-16 top-1/2 h-px w-16 bg-slate-600" />}
                     {roundIndex < rounds.length - 1 && fixtureIndex % 2 === 0 && fixtureIndex + 1 < paddedMatches.length && (
                       <div
-                        className="pointer-events-none absolute -right-4 top-1/2 w-px bg-slate-500"
+                        className="pointer-events-none absolute -right-16 top-1/2 w-px bg-slate-500"
                         style={{ height: `${cardHeightPx + columnGapPx}px` }}
                       />
                     )}
