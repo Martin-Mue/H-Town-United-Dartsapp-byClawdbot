@@ -30,10 +30,19 @@ async function bootstrap(): Promise<void> {
   const eventBus = new InMemoryEventBus();
   const matchService = new MatchApplicationService(repository, eventBus);
 
-  const sampleMatch = new DartsMatchAggregate('match-dev-001', 'X01_501', 501, [
-    new PlayerLegState('p1', 'Player One', 'DOUBLE_OUT', 501),
-    new PlayerLegState('p2', 'Player Two', 'DOUBLE_OUT', 501),
-  ]);
+  const sampleMatch = new DartsMatchAggregate(
+    'match-dev-001',
+    {
+      mode: 'X01_501',
+      legsPerSet: 3,
+      setsToWin: 2,
+      startingPlayerId: 'p1',
+    },
+    [
+      new PlayerLegState('p1', 'Player One', 'DOUBLE_OUT', 501),
+      new PlayerLegState('p2', 'Player Two', 'DOUBLE_OUT', 501),
+    ],
+  );
   await repository.save(sampleMatch);
 
   new GameController(matchService).registerRoutes(app);
