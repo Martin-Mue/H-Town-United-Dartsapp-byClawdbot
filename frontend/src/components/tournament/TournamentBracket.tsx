@@ -1,8 +1,7 @@
 export type TournamentMatch = {
-  id: string;
-  home: string;
-  away: string;
-  winner?: string;
+  homePlayerId: string;
+  awayPlayerId: string;
+  winnerPlayerId?: string;
 };
 
 export type TournamentRound = {
@@ -17,7 +16,7 @@ export function TournamentBracket({
   onSelectWinner,
 }: {
   rounds: TournamentRound[];
-  onSelectWinner: (roundNumber: number, matchId: string, winner: string) => void;
+  onSelectWinner: (roundNumber: number, fixtureIndex: number, winner: string) => void;
 }) {
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
@@ -26,25 +25,25 @@ export function TournamentBracket({
           <h3 className="text-sm font-semibold">Round {round.roundNumber}</h3>
           <p className="text-xs muted-text">Mode: {round.mode.replace('_', ' ')}</p>
 
-          {round.matches.map((match) => (
-            <div key={match.id} className="rounded-lg bg-slate-800 p-2 text-xs text-slate-200 space-y-2">
-              <div className="font-semibold">{match.home} vs {match.away}</div>
+          {round.matches.map((match, fixtureIndex) => (
+            <div key={`${round.roundNumber}-${fixtureIndex}`} className="rounded-lg bg-slate-800 p-2 text-xs text-slate-200 space-y-2">
+              <div className="font-semibold">{match.homePlayerId} vs {match.awayPlayerId}</div>
 
-              {match.winner ? (
-                <div className="rounded bg-emerald-900/40 p-1 text-emerald-200">Winner: {match.winner}</div>
+              {match.winnerPlayerId ? (
+                <div className="rounded bg-emerald-900/40 p-1 text-emerald-200">Winner: {match.winnerPlayerId}</div>
               ) : (
                 <div className="grid grid-cols-2 gap-1">
                   <button
-                    onClick={() => onSelectWinner(round.roundNumber, match.id, match.home)}
+                    onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)}
                     className="rounded bg-slate-700 p-1"
                   >
-                    {match.home}
+                    {match.homePlayerId}
                   </button>
                   <button
-                    onClick={() => onSelectWinner(round.roundNumber, match.id, match.away)}
+                    onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)}
                     className="rounded bg-slate-700 p-1"
                   >
-                    {match.away}
+                    {match.awayPlayerId}
                   </button>
                 </div>
               )}

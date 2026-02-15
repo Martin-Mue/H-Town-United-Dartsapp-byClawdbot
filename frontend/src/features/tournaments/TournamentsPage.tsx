@@ -1,65 +1,53 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TournamentBracket, type TournamentRound } from '../../components/tournament/TournamentBracket';
+import { TournamentApiClient, type RoundMode } from '../../services/TournamentApiClient';
 
-const initialRounds: TournamentRound[] = [
-  {
-    roundNumber: 1,
-    mode: 'X01_301',
-    matches: [
-      { id: 'r1m1', home: 'Player A', away: 'Player B' },
-      { id: 'r1m2', home: 'Player C', away: 'Player D' },
-    ],
-  },
-  {
-    roundNumber: 2,
-    mode: 'X01_501',
-    matches: [{ id: 'r2m1', home: 'TBD', away: 'TBD' }],
-  },
-  {
-    roundNumber: 3,
-    mode: 'CUSTOM',
-    matches: [{ id: 'r3m1', home: 'TBD', away: 'TBD' }],
-  },
-];
+const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
 
-/** Shows tournament overview with round modes and bracket auto-progression. */
+/** Shows tournament overview with round modes and backend-driven bracket progression. */
 export function TournamentsPage() {
-  const [rounds, setRounds] = useState<TournamentRound[]>(initialRounds);
+  const [tournamentId, setTournamentId] = useState<string>('');
+  const [rounds, setRounds] = useState<TournamentRound[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const setRoundMode = (roundNumber: number, mode: TournamentRound['mode']) => {
-    setRounds((prev) => prev.map((round) => (round.roundNumber === roundNumber ? { ...round, mode } : round)));
+  const refresh = async () => {
+    try {
+      setErrorMessage(null);
+      const tournaments = await tournamentApiClient.listTournaments();
+      if (tournaments.length === 0) return;
+      const selected = tournaments[0];
+      setTournamentId(selected.tournamentId);
+      setRounds(selected.rounds.map((round) => ({
+        roundNumber: round.roundNumber,
+        mode: round.mode,
+        matches: round.fixtures,
+      })));
+    } catch {
+      setErrorMessage('Tournament backend unavailable. Start backend to enable full bracket flow.');
+    }
   };
 
-  const onSelectWinner = (roundNumber: number, matchId: string, winner: string) => {
-    setRounds((prev) => {
-      const next = prev.map((round) => ({ ...round, matches: round.matches.map((m) => ({ ...m })) }));
-      const currentRound = next.find((entry) => entry.roundNumber === roundNumber);
-      if (!currentRound) return prev;
+  useEffect(() => {
+    void refresh();
+  }, []);
 
-      const currentMatch = currentRound.matches.find((entry) => entry.id === matchId);
-      if (!currentMatch || currentMatch.winner) return prev;
-      currentMatch.winner = winner;
+  const setRoundMode = async (roundNumber: number, mode: RoundMode) => {
+    if (!tournamentId) return;
+    const updated = await tournamentApiClient.setRoundMode(tournamentId, roundNumber, mode);
+    setRounds(updated.rounds.map((round) => ({ roundNumber: round.roundNumber, mode: round.mode, matches: round.fixtures })));
+  };
 
-      const nextRound = next.find((entry) => entry.roundNumber === roundNumber + 1);
-      if (nextRound) {
-        const winners = currentRound.matches.map((entry) => entry.winner).filter(Boolean) as string[];
-        if (winners.length >= 2) {
-          nextRound.matches[0].home = winners[0];
-          nextRound.matches[0].away = winners[1];
-        } else if (winners.length === 1) {
-          nextRound.matches[0].home = winners[0];
-        }
-      }
-
-      return next;
-    });
+  const onSelectWinner = async (roundNumber: number, fixtureIndex: number, winner: string) => {
+    if (!tournamentId) return;
+    const updated = await tournamentApiClient.recordWinner(tournamentId, roundNumber, fixtureIndex, winner);
+    setRounds(updated.rounds.map((round) => ({ roundNumber: round.roundNumber, mode: round.mode, matches: round.fixtures })));
   };
 
   return (
     <section className="space-y-3">
       <div className="rounded-2xl card-bg p-4 flex items-center gap-3">
         <img src="/branding/h-town-united-logo-tree.jpg" alt="H-Town logo" className="h-10 w-10 rounded-full border border-slate-500 object-cover" />
-        <span>Tournament mode with round-based game variants and auto-progression</span>
+        <span>Tournament mode with backend persistence and winner auto-progression</span>
       </div>
 
       <div className="rounded-2xl card-bg p-4 space-y-2">
@@ -69,7 +57,7 @@ export function TournamentsPage() {
             <span>Round {round.roundNumber}</span>
             <select
               value={round.mode}
-              onChange={(event) => setRoundMode(round.roundNumber, event.target.value as TournamentRound['mode'])}
+              onChange={(event) => setRoundMode(round.roundNumber, event.target.value as RoundMode)}
               className="rounded bg-slate-800 p-1"
             >
               <option value="X01_301">301</option>
@@ -81,25 +69,11 @@ export function TournamentsPage() {
         ))}
       </div>
 
+      {errorMessage && <p className="rounded-xl bg-amber-900/40 p-3 text-xs text-amber-100">{errorMessage}</p>}
+
       <TournamentBracket rounds={rounds} onSelectWinner={onSelectWinner} />
 
-      <div className="rounded-2xl card-bg p-4">
-        <h3 className="text-sm font-semibold mb-2">League Standings Snapshot</h3>
-        <div className="space-y-2 text-sm">
-          <StandingRow rank={1} team="H-Town Aces" points={27} />
-          <StandingRow rank={2} team="Double Masters" points={24} />
-          <StandingRow rank={3} team="Bullseye Bros" points={21} />
-        </div>
-      </div>
+      <button onClick={refresh} className="w-full rounded-xl bg-slate-800 p-3 text-sm text-slate-200">Refresh Tournament</button>
     </section>
-  );
-}
-
-function StandingRow({ rank, team, points }: { rank: number; team: string; points: number }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-slate-800 p-2">
-      <span className="text-slate-300">#{rank} {team}</span>
-      <span className="font-semibold text-accent">{points} pts</span>
-    </div>
   );
 }

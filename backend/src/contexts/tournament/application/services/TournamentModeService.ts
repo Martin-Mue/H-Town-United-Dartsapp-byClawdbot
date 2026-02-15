@@ -8,6 +8,7 @@ export class TournamentModeService {
   public createRoundConfigurableTournament(tournamentId: string): TournamentAggregate {
     return new TournamentAggregate(
       tournamentId,
+      'Round Configurable Tournament',
       [
         new TournamentRound(1, 'X01_301', []),
         new TournamentRound(2, 'X01_501', []),

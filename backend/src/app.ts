@@ -8,6 +8,9 @@ import { MatchApplicationService } from './contexts/game/application/services/Ma
 import { GameController } from './contexts/game/infrastructure/controllers/GameController.js';
 import { InMemoryMatchRepository } from './contexts/game/infrastructure/repositories/InMemoryMatchRepository.js';
 import { JwtTokenService } from './contexts/identity/application/services/JwtTokenService.js';
+import { TournamentApplicationService } from './contexts/tournament/application/services/TournamentApplicationService.js';
+import { TournamentController } from './contexts/tournament/infrastructure/controllers/TournamentController.js';
+import { InMemoryTournamentRepository } from './contexts/tournament/infrastructure/repositories/InMemoryTournamentRepository.js';
 import { CompositeEventBus } from './shared/infrastructure/CompositeEventBus.js';
 import { InMemoryEventBus } from './shared/infrastructure/InMemoryEventBus.js';
 import { SocketIoEventBus } from './shared/infrastructure/SocketIoEventBus.js';
@@ -58,6 +61,13 @@ export async function createApp(): Promise<FastifyInstance> {
     ],
   });
 
+  const tournamentService = new TournamentApplicationService(new InMemoryTournamentRepository());
+  await tournamentService.createTournament({
+    name: 'H-Town Open',
+    participants: ['Player A', 'Player B', 'Player C', 'Player D'],
+    roundModes: ['X01_301', 'X01_501', 'CUSTOM'],
+  });
+
   const tokenService = new JwtTokenService(process.env.JWT_SECRET ?? 'dev-secret');
 
   app.post('/api/identity/token', async (request) => {
@@ -91,6 +101,7 @@ export async function createApp(): Promise<FastifyInstance> {
   });
 
   new GameController(matchService).registerRoutes(app);
+  new TournamentController(tournamentService).registerRoutes(app);
 
   return app;
 }
