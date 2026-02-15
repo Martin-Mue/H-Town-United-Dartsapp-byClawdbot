@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Dumbbell, Play, Target, RotateCw, Crosshair, Zap, Trophy, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Dumbbell, Play, Target, RotateCw, Crosshair, Zap, Trophy, CheckCircle2, BookOpen } from 'lucide-react';
+import { MODE_RULES } from './modeRules';
 
 type ManagedPlayer = {
   id: string;
@@ -268,6 +269,20 @@ export function TrainingPage() {
             </div>
           </button>
         ))}
+      </div>
+
+      <div className="rounded-2xl card-bg border soft-border p-4">
+        <h3 className="text-sm uppercase mb-2 flex items-center gap-2"><BookOpen size={14} /> Spiel- & Trainingsregeln</h3>
+        <p className="text-xs muted-text mb-2">Alle Modi mit Kurzregeln und Trainingsziel.</p>
+        <div className="space-y-2 max-h-80 overflow-auto pr-1">
+          {MODE_RULES.map((rule) => (
+            <details key={rule.id} className="rounded bg-slate-800 p-2 text-xs">
+              <summary className="cursor-pointer font-semibold">{rule.title} <span className="muted-text">({rule.kind === 'game' ? 'Spielmodus' : 'Trainingsmodus'})</span></summary>
+              <p className="mt-2"><span className="muted-text">Regeln:</span> {rule.rules}</p>
+              <p className="mt-1"><span className="muted-text">Trainiert:</span> {rule.trains}</p>
+            </details>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">

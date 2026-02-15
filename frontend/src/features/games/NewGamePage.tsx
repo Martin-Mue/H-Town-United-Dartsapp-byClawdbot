@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Target, ChevronDown } from 'lucide-react';
 import { GameApiClient, type CheckoutMode, type GameMode } from '../../services/GameApiClient';
+import { MODE_RULES } from '../training/modeRules';
 
 const apiClient = new GameApiClient('http://localhost:8080');
 
@@ -29,6 +30,11 @@ export function NewGamePage() {
       return [];
     }
   }, []);
+
+  const activeModeRule = useMemo(() => {
+    if (mode === 'CRICKET') return MODE_RULES.find((r) => r.id === 'cricket');
+    return MODE_RULES.find((r) => r.id === 'x01-501');
+  }, [mode]);
 
   const createMatch = async () => {
     try {
@@ -76,6 +82,14 @@ export function NewGamePage() {
             </button>
           ))}
         </div>
+
+        {activeModeRule && (
+          <div className="rounded-xl bg-slate-800 p-3 text-xs">
+            <p className="font-semibold">{activeModeRule.title}</p>
+            <p className="muted-text mt-1"><span className="text-slate-300">Regeln:</span> {activeModeRule.rules}</p>
+            <p className="muted-text mt-1"><span className="text-slate-300">Trainiert:</span> {activeModeRule.trains}</p>
+          </div>
+        )}
       </div>
 
       <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
