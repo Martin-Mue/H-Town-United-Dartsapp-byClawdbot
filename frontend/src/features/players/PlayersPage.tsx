@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Search, UserPlus, X, Sparkles } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Search, UserPlus, X, Sparkles, Upload, Camera, CameraOff } from 'lucide-react';
 
 type CheckoutMode = 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
 type MembershipStatus = 'CLUB_MEMBER' | 'TRIAL';
@@ -35,6 +35,9 @@ function generateHtownAvatar(displayName: string, seed = 'htown'): string {
 }
 
 export function PlayersPage() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+
   const [players, setPlayers] = useState<ManagedPlayer[]>(() => {
     const seedVersion = window.localStorage.getItem(SEED_VERSION_KEY);
     if (seedVersion !== SEED_VERSION) {
@@ -63,6 +66,7 @@ export function PlayersPage() {
   const [modeInput, setModeInput] = useState<CheckoutMode>('DOUBLE_OUT');
   const [statusInput, setStatusInput] = useState<MembershipStatus>('CLUB_MEMBER');
   const [avatarInput, setAvatarInput] = useState('');
+  const [cameraOn, setCameraOn] = useState(false);
 
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
@@ -91,6 +95,7 @@ export function PlayersPage() {
       },
     ]);
 
+    stopCamera();
     setNameInput('');
     setModeInput('DOUBLE_OUT');
     setStatusInput('CLUB_MEMBER');
@@ -106,6 +111,50 @@ export function PlayersPage() {
 
   const generateAvatarForPlayer = (playerId: string, displayName: string) => {
     persist(players.map((p) => (p.id === playerId ? { ...p, avatarUrl: generateHtownAvatar(displayName, playerId) } : p)));
+  };
+
+  const onUploadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await fileToDataUrl(file);
+    setAvatarInput(dataUrl);
+  };
+
+  const toggleCamera = async () => {
+    if (cameraOn) {
+      stopCamera();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        await cameraVideoRef.current.play();
+      }
+      setCameraOn(true);
+    } catch {
+      setCameraOn(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!cameraVideoRef.current) return;
+    const video = cameraVideoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 512;
+    canvas.height = video.videoHeight || 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setAvatarInput(canvas.toDataURL('image/jpeg', 0.9));
+  };
+
+  const stopCamera = () => {
+    const stream = cameraVideoRef.current?.srcObject as MediaStream | null;
+    stream?.getTracks().forEach((t) => t.stop());
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+    setCameraOn(false);
   };
 
   return (
@@ -150,16 +199,34 @@ export function PlayersPage() {
           <div className="w-full max-w-md rounded-2xl border soft-border card-bg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xl uppercase">Neues Mitglied</h3>
-              <button onClick={() => setShowModal(false)}><X size={16} /></button>
+              <button onClick={() => { stopCamera(); setShowModal(false); }}><X size={16} /></button>
             </div>
 
             <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Vor- und Nachname" className="w-full rounded-xl bg-slate-800 border border-sky-400/60 p-3" />
 
-            <button onClick={generateAvatarForModal} className="w-full rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
-              <Sparkles size={12} /> KI-Bild im H-Town Look generieren
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={generateAvatarForModal} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
+                <Sparkles size={12} /> KI generieren
+              </button>
+              <button onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
+                <Upload size={12} /> Bild hochladen
+              </button>
+              <button onClick={toggleCamera} className="col-span-2 rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
+                {cameraOn ? <CameraOff size={12} /> : <Camera size={12} />} {cameraOn ? 'Kamera aus' : 'Foto aufnehmen'}
+              </button>
+            </div>
 
-            {avatarInput && <img src={avatarInput} alt="Avatar preview" className="h-28 w-28 mx-auto rounded-xl object-cover border soft-border" />}
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onUploadFile} />
+
+            {cameraOn && (
+              <div className="space-y-2">
+                <video ref={cameraVideoRef} className="w-full rounded-xl border soft-border bg-black" muted playsInline />
+                <button onClick={capturePhoto} className="w-full rounded-lg bg-sky-400 text-slate-900 p-2 text-xs font-semibold">Foto als Vorschau übernehmen</button>
+              </div>
+            )}
+
+            {avatarInput && <img src={avatarInput} alt="Avatar preview" className="h-32 w-32 mx-auto rounded-xl object-cover border soft-border" />}
+            {!avatarInput && <p className="text-[11px] muted-text text-center">Vorschau erscheint hier vor dem Speichern.</p>}
 
             <select value={modeInput} onChange={(e) => setModeInput(e.target.value as CheckoutMode)} className="w-full rounded-xl bg-slate-800 p-3">
               <option value="SINGLE_OUT">Single Out</option>
@@ -178,4 +245,13 @@ export function PlayersPage() {
       )}
     </section>
   );
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
