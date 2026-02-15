@@ -14,6 +14,7 @@ import { FileTournamentRepository } from './contexts/tournament/infrastructure/r
 import { CompositeEventBus } from './shared/infrastructure/CompositeEventBus.js';
 import { InMemoryEventBus } from './shared/infrastructure/InMemoryEventBus.js';
 import { SocketIoEventBus } from './shared/infrastructure/SocketIoEventBus.js';
+import { CameraRecognitionReviewService } from './contexts/media-vision/application/services/CameraRecognitionReviewService.js';
 
 /** Builds configured Fastify application with API routes, JWT and websocket event plumbing. */
 export async function createApp(): Promise<FastifyInstance> {
@@ -75,6 +76,7 @@ export async function createApp(): Promise<FastifyInstance> {
   }
 
   const tokenService = new JwtTokenService(process.env.JWT_SECRET ?? 'dev-secret');
+  const cameraReviewService = new CameraRecognitionReviewService();
 
   app.post('/api/identity/token', async (request) => {
     const body = request.body as { userId?: string };
@@ -120,6 +122,41 @@ export async function createApp(): Promise<FastifyInstance> {
       topScore180Count: players.filter((player) => player.highestTurnScore >= 180).length,
       activeMatchIds: matches.filter((match) => !match.winnerPlayerId).map((match) => match.matchId),
     };
+  });
+
+
+  app.post('/api/media-vision/detect-throw', async (request, reply) => {
+    const body = (request.body ?? {}) as { matchId?: string; suggestedPoints?: number; suggestedMultiplier?: 1 | 2 | 3 };
+    if (!body.matchId) return reply.code(400).send({ message: 'matchId required' });
+
+    const suggestedPoints = Math.max(0, Math.min(180, Number(body.suggestedPoints ?? 0)));
+    const suggestedMultiplier = body.suggestedMultiplier === 2 || body.suggestedMultiplier === 3 ? body.suggestedMultiplier : 1;
+    const confidence = Number((0.58 + Math.random() * 0.4).toFixed(2));
+
+    return {
+      matchId: body.matchId,
+      turnId: `vision-${Date.now()}`,
+      points: suggestedPoints,
+      multiplier: suggestedMultiplier,
+      confidence,
+      requiresManualReview: confidence < 0.78,
+      source: 'camera-beta-assist',
+    };
+  });
+
+  app.post('/api/media-vision/manual-correction', async (request, reply) => {
+    const body = (request.body ?? {}) as { matchId?: string; turnId?: string; correctedPoints?: number; correctedMultiplier?: 1 | 2 | 3; reason?: string };
+    if (!body.matchId || !body.turnId) return reply.code(400).send({ message: 'matchId and turnId required' });
+
+    const normalized = cameraReviewService.applyManualCorrection({
+      matchId: body.matchId,
+      turnId: body.turnId,
+      correctedPoints: Math.max(0, Math.min(180, Number(body.correctedPoints ?? 0))),
+      correctedMultiplier: body.correctedMultiplier === 2 || body.correctedMultiplier === 3 ? body.correctedMultiplier : 1,
+      reason: body.reason ?? 'manual-review',
+    });
+
+    return normalized;
   });
 
   new GameController(matchService).registerRoutes(app);

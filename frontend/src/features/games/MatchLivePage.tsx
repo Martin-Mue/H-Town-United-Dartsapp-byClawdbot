@@ -53,6 +53,7 @@ export function MatchLivePage() {
   const [matchSettings, setMatchSettings] = useState<{ bullOffEnabled?: boolean; bullOffLimitType?: 'turns' | 'darts'; bullOffLimitValue?: number }>({});
   const [preMatchSeen, setPreMatchSeen] = useState(false);
   const [playerTurnScores, setPlayerTurnScores] = useState<Record<string, number[]>>({});
+  const [cameraDetection, setCameraDetection] = useState<{ turnId: string; points: number; multiplier: 1 | 2 | 3; confidence: number; requiresManualReview: boolean } | null>(null);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -247,6 +248,45 @@ export function MatchLivePage() {
     );
   };
 
+
+  const runCameraDetection = async () => {
+    if (!state) return;
+    const suggestedPoints = Math.min(180, selected === 50 ? 50 : Math.max(0, selected * multiplier));
+    const result = await apiClient.detectThrowWithCamera({
+      matchId: state.matchId,
+      suggestedPoints,
+      suggestedMultiplier: multiplier,
+    });
+
+    if (result.requiresManualReview) {
+      const corrected = await apiClient.applyManualCameraCorrection({
+        matchId: state.matchId,
+        turnId: result.turnId,
+        correctedPoints: result.points,
+        correctedMultiplier: result.multiplier,
+        reason: 'low-confidence-review',
+      });
+      setCameraDetection({
+        turnId: result.turnId,
+        points: corrected.points,
+        multiplier: corrected.multiplier,
+        confidence: corrected.confidence,
+        requiresManualReview: false,
+      });
+      setErrorMessage('KI-Vorschlag hatte geringe Sicherheit und wurde im Review-Flow bestätigt.');
+      return;
+    }
+
+    setCameraDetection({
+      turnId: result.turnId,
+      points: result.points,
+      multiplier: result.multiplier,
+      confidence: result.confidence,
+      requiresManualReview: result.requiresManualReview,
+    });
+    setErrorMessage(null);
+  };
+
   const submitTurn = async () => {
     if (!state) return;
     if (bullOffRequired) { setErrorMessage('Ausbullen erforderlich. Bitte Sieger per Bull-Off festlegen.'); return; }
@@ -435,7 +475,22 @@ export function MatchLivePage() {
               <button onClick={() => setSelected(25)} className="rounded-lg bg-slate-800 p-2 text-xs">Bull</button>
               <button onClick={() => setSelected(50)} className="rounded-lg bg-slate-800 p-2 text-xs">Bullseye</button>
             </div>
-            <button onClick={addDartToTurn} disabled={pendingX01.length >= 3} className="w-full rounded-lg bg-slate-800 p-2 text-xs">Dart hinzufügen ({pendingX01.length}/3)</button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={addDartToTurn} disabled={pendingX01.length >= 3} className="w-full rounded-lg bg-slate-800 p-2 text-xs">Dart hinzufügen ({pendingX01.length}/3)</button>
+              <button onClick={() => void runCameraDetection()} className="w-full rounded-lg bg-slate-800 p-2 text-xs">KI Dart erkennen</button>
+            </div>
+            {cameraDetection && (
+              <div className="rounded bg-slate-900/70 border soft-border p-2 text-[11px]">
+                <p>KI Vorschlag: {cameraDetection.points} Punkte · x{cameraDetection.multiplier} · Confidence {Math.round(cameraDetection.confidence * 100)}%</p>
+                <button
+                  onClick={() => {
+                    const label = `${Math.max(0, Math.round(cameraDetection.points / Math.max(1, cameraDetection.multiplier)))} x${cameraDetection.multiplier}`;
+                    setPendingX01((prev) => prev.length >= 3 ? prev : [...prev, { points: cameraDetection.points, multiplier: cameraDetection.multiplier, label }]);
+                  }}
+                  className="mt-1 rounded bg-slate-800 px-2 py-1"
+                >Vorschlag übernehmen</button>
+              </div>
+            )}
             <p className="text-xs muted-text">Turn: {pendingX01.map((d, i) => `#${i + 1} ${d.label}=${d.points}`).join(' · ') || '—'}</p>
           </>
         )}

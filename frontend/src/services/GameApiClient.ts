@@ -83,6 +83,41 @@ export class GameApiClient {
   }
 
 
+
+  public async detectThrowWithCamera(payload: { matchId: string; suggestedPoints: number; suggestedMultiplier: 1 | 2 | 3 }): Promise<{
+    matchId: string;
+    turnId: string;
+    points: number;
+    multiplier: 1 | 2 | 3;
+    confidence: number;
+    requiresManualReview: boolean;
+    source: string;
+  }> {
+    const response = await fetch(`${this.baseUrl}/api/media-vision/detect-throw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to detect throw via camera.');
+    return response.json();
+  }
+
+  public async applyManualCameraCorrection(payload: {
+    matchId: string;
+    turnId: string;
+    correctedPoints: number;
+    correctedMultiplier: 1 | 2 | 3;
+    reason: string;
+  }): Promise<{ points: number; multiplier: 1 | 2 | 3; confidence: number; manuallyCorrected: true }> {
+    const response = await fetch(`${this.baseUrl}/api/media-vision/manual-correction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to apply manual correction.');
+    return response.json();
+  }
+
   /** Resolves a match winner after bull-off decision. */
   public async registerBullOffWinner(matchId: string, payload: { winnerPlayerId: string }): Promise<MatchStateDto> {
     const response = await fetch(`${this.baseUrl}/api/game/matches/${matchId}/bull-off-winner`, {
