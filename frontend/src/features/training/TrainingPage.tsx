@@ -180,7 +180,10 @@ export function TrainingPage() {
     setTrainingThrows((prev) => [...prev, next]);
 
     if (selectedDrill?.id === 'clock') {
-      if (trainingSegment === trainingTarget) setTrainingTarget((t) => (t >= 20 ? 25 : t + 1));
+      const hitClockTarget = trainingTarget === 25
+        ? (trainingSegment === 25 || trainingSegment === 50)
+        : trainingSegment === trainingTarget;
+      if (hitClockTarget) setTrainingTarget((t) => (t >= 20 ? 25 : t + 1));
     }
     if (selectedDrill?.id === 'doubles') {
       if (forcedMultiplier === 2 && trainingSegment === trainingTarget) setTrainingTarget((t) => Math.min(20, t + 1));
@@ -282,15 +285,15 @@ export function TrainingPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-1">
-              <button onClick={() => setTrainingSegment(0)} className="rounded bg-slate-800 p-1 text-xs">Miss</button>
-              <button onClick={() => setTrainingSegment(25)} className="rounded bg-slate-800 p-1 text-xs">Bull</button>
-              <button onClick={() => setTrainingSegment(50)} className="rounded bg-slate-800 p-1 text-xs">Bullseye</button>
+              <button onClick={() => { setTrainingSegment(0); setTrainingMultiplier(1); }} className={`rounded p-1 text-xs ${trainingSegment === 0 ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>Miss</button>
+              <button onClick={() => { setTrainingSegment(25); setTrainingMultiplier(1); }} className={`rounded p-1 text-xs ${trainingSegment === 25 ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>Bull</button>
+              <button onClick={() => { setTrainingSegment(50); setTrainingMultiplier(1); }} className={`rounded p-1 text-xs ${trainingSegment === 50 ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>Bullseye</button>
             </div>
 
             <button onClick={addTrainingDart} className="w-full rounded bg-slate-800 p-1.5 text-xs">Dart hinzufügen</button>
             {selectedDrill.id === 'random' && <button onClick={() => setTrainingTarget(61 + Math.floor(Math.random() * 40))} className="w-full rounded bg-slate-800 p-1.5 text-xs">Neue Zufalls-Zielzahl</button>}
             <p className="text-[11px] muted-text">Darts: {trainingThrows.length} · Letzter: {trainingThrows.at(-1) ? `${trainingThrows.at(-1)?.base}x${trainingThrows.at(-1)?.mult}` : '—'}</p>
-            <p className="text-[11px] muted-text">Je nach Modus wird ein Zielsegment/Zielcheckout vorgegeben und live aktualisiert.</p>
+            <p className="text-[11px] muted-text">Je nach Modus wird ein Zielsegment/Zielcheckout vorgegeben und live aktualisiert. Around the Clock endet mit Bull/Bullseye.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
