@@ -1,23 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
-  --app-bg: #0f1724;
-  --app-text: #ffffff;
-  --panel-bg: rgba(27, 35, 51, 0.95);
-  --card-bg: #1f2937;
-  --muted-text: #94a3b8;
+  --app-bg: hsl(222 30% 5%);
+  --app-text: hsl(210 15% 92%);
+  --panel-bg: hsl(222 25% 9% / 0.96);
+  --card-bg: hsl(222 20% 14%);
+  --muted-text: hsl(222 12% 60%);
+  --primary: hsl(185 85% 48%);
+  --secondary: hsl(155 65% 42%);
+  --accent: hsl(45 100% 58%);
+  --border-soft: hsl(222 18% 18%);
+  --gradient-hero: linear-gradient(135deg, hsl(185 85% 48% / 0.12), hsl(155 65% 42% / 0.08), hsl(45 100% 58% / 0.06));
 }
 
 :root.theme-light {
   color-scheme: light;
-  --app-bg: #f1f5f9;
-  --app-text: #0f172a;
-  --panel-bg: rgba(255, 255, 255, 0.95);
-  --card-bg: #e2e8f0;
-  --muted-text: #475569;
+  --app-bg: hsl(210 40% 96%);
+  --app-text: hsl(222 30% 11%);
+  --panel-bg: hsl(0 0% 100% / 0.95);
+  --card-bg: hsl(210 30% 91%);
+  --muted-text: hsl(222 15% 38%);
+  --primary: hsl(195 90% 38%);
+  --secondary: hsl(155 65% 36%);
+  --accent: hsl(38 95% 46%);
+  --border-soft: hsl(215 26% 82%);
+  --gradient-hero: linear-gradient(135deg, hsl(195 90% 38% / 0.12), hsl(155 65% 36% / 0.08), hsl(38 95% 46% / 0.06));
 }
 
 html,
@@ -30,6 +42,17 @@ body,
 body {
   background: var(--app-bg);
   color: var(--app-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Oswald', 'Inter', sans-serif;
+  letter-spacing: 0.02em;
 }
 
 .app-bg {
@@ -50,6 +73,22 @@ body {
 
 .muted-text {
   color: var(--muted-text);
+}
+
+.primary-text {
+  color: var(--primary);
+}
+
+.hero-gradient {
+  background: var(--gradient-hero);
+}
+
+.soft-border {
+  border-color: var(--border-soft);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 24px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 button,
