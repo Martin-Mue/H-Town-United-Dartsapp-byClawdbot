@@ -6,6 +6,9 @@ export type ManagedPlayer = {
   gripStyle?: string;
   dartWeightGrams?: number;
   seasonsPlayed?: number;
+  nicknamePronunciation?: string;
+  announcerStyle?: 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR';
+  introAnnouncementEnabled?: boolean;
   membershipStatus?: 'CLUB_MEMBER' | 'TRIAL';
   currentAverage?: number;
   checkoutPercentage?: number;

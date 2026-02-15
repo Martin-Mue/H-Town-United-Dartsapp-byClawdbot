@@ -22,6 +22,10 @@ type HistoryEntry = {
 type ManagedPlayer = {
   id: string;
   displayName: string;
+  nickname?: string;
+  nicknamePronunciation?: string;
+  announcerStyle?: 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR';
+  introAnnouncementEnabled?: boolean;
   currentAverage?: number;
   checkoutPercentage?: number;
   pressurePerformanceIndex?: number;
@@ -128,6 +132,26 @@ export function MatchLivePage() {
 
     return { headToHeadMatches: headToHead.length, winsA, winsB, tips };
   }, [state, history, localPlayers]);
+
+
+  useEffect(() => {
+    if (!state || preMatchSeen || state.players.length === 0) return;
+    const names = state.players
+      .map((p) => {
+        const local = localPlayers.find((lp) => lp.id === p.playerId || lp.displayName.toLowerCase() === p.displayName.toLowerCase());
+        if (local && local.introAnnouncementEnabled === false) return null;
+        const display = local?.nickname ? `${p.displayName} "${local.nicknamePronunciation || local.nickname}"` : p.displayName;
+        return display;
+      })
+      .filter(Boolean)
+      .join(' gegen ');
+
+    if (!names || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(`Matchup: ${names}`);
+    utterance.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, [state, preMatchSeen, localPlayers]);
 
   const isCricket = state?.mode === 'CRICKET';
   const active = useMemo(() => state?.players.find((p) => p.playerId === state.activePlayerId), [state]);
@@ -317,7 +341,24 @@ export function MatchLivePage() {
           ))}
         </div>
 
-        <button onClick={() => setPreMatchSeen(true)} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900">Match starten</button>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => {
+            const names = state.players
+              .map((p) => {
+                const local = localPlayers.find((lp) => lp.id === p.playerId || lp.displayName.toLowerCase() === p.displayName.toLowerCase());
+                if (local && local.introAnnouncementEnabled === false) return null;
+                return local?.nickname ? `${p.displayName} \"${local.nicknamePronunciation || local.nickname}\"` : p.displayName;
+              })
+              .filter(Boolean)
+              .join(' gegen ');
+            if (!names || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+            const utterance = new SpeechSynthesisUtterance(`Matchup: ${names}`);
+            utterance.rate = 0.95;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+          }} className="w-full rounded-xl bg-slate-800 p-3 text-xs">Ansage abspielen</button>
+          <button onClick={() => setPreMatchSeen(true)} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900">Match starten</button>
+        </div>
       </section>
     );
   }

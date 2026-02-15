@@ -12,6 +12,9 @@ type ManagedPlayer = {
   gripStyle?: string;
   dartWeightGrams?: number;
   seasonsPlayed?: number;
+  nicknamePronunciation?: string;
+  announcerStyle?: 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR';
+  introAnnouncementEnabled?: boolean;
   membershipStatus: MembershipStatus;
   preferredCheckoutMode: CheckoutMode;
   notes: string;
@@ -25,6 +28,24 @@ type ManagedPlayer = {
 const STORAGE_KEY = 'htown-players';
 const SEED_VERSION_KEY = 'htown-player-seed-version';
 const SEED_VERSION = 'v1-force-reset-5';
+
+
+const PRONUNCIATION_PRESETS = [
+  'Original',
+  'Deutsch klar',
+  'Englisch klar',
+  'Bühnenname langsam',
+  'Bühnenname hart',
+  'Sportkommentator',
+  'Arena Hype',
+  'League neutral',
+  'VIP Intro',
+  'Intimidator',
+  'Street Style',
+  'Creator Tag',
+] as const;
+
+type PronunciationPreset = (typeof PRONUNCIATION_PRESETS)[number];
 
 const SEED_PLAYERS: ManagedPlayer[] = [
   { id: 'seed-lukas', displayName: 'Lukas Weber', membershipStatus: 'CLUB_MEMBER', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Captain, strong checkout routes.', currentAverage: 71, checkoutPercentage: 38, pressurePerformanceIndex: 79, total180s: 24, avatarUrl: '' },
@@ -114,6 +135,10 @@ export function PlayersPage() {
   const [gripStyleInput, setGripStyleInput] = useState('');
   const [dartWeightInput, setDartWeightInput] = useState('');
   const [seasonsPlayedInput, setSeasonsPlayedInput] = useState('0');
+  const [pronunciationPreset, setPronunciationPreset] = useState<PronunciationPreset>('Original');
+  const [pronunciationInput, setPronunciationInput] = useState('');
+  const [announcerStyleInput, setAnnouncerStyleInput] = useState<'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR'>('ARENA');
+  const [introAnnouncementEnabledInput, setIntroAnnouncementEnabledInput] = useState(true);
   const [avatarInput, setAvatarInput] = useState('');
   const [sourcePhotoInput, setSourcePhotoInput] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
@@ -144,6 +169,9 @@ export function PlayersPage() {
         gripStyle: gripStyleInput.trim() || undefined,
         dartWeightGrams: dartWeightInput ? Number(dartWeightInput) : undefined,
         seasonsPlayed: Number(seasonsPlayedInput || 0),
+        nicknamePronunciation: resolvePronunciation(nicknameInput, pronunciationInput, pronunciationPreset),
+        announcerStyle: announcerStyleInput,
+        introAnnouncementEnabled: introAnnouncementEnabledInput,
         preferredCheckoutMode: modeInput,
         notes: '',
         currentAverage: 0,
@@ -163,6 +191,10 @@ export function PlayersPage() {
     setGripStyleInput('');
     setDartWeightInput('');
     setSeasonsPlayedInput('0');
+    setPronunciationPreset('Original');
+    setPronunciationInput('');
+    setAnnouncerStyleInput('ARENA');
+    setIntroAnnouncementEnabledInput(true);
     setAvatarInput('');
     setSourcePhotoInput('');
     setShowModal(false);
@@ -298,6 +330,27 @@ export function PlayersPage() {
               <input type="number" min={0} step={1} value={seasonsPlayedInput} onChange={(e) => setSeasonsPlayedInput(e.target.value)} placeholder="Gespielte Saisons" className="rounded-xl bg-slate-800 p-3 text-sm" />
             </div>
 
+            <div className="rounded-xl bg-slate-900/70 border soft-border p-3 space-y-2">
+              <p className="text-xs uppercase muted-text">Ansage / Aussprache</p>
+              <select value={pronunciationPreset} onChange={(e) => setPronunciationPreset(e.target.value as PronunciationPreset)} className="w-full rounded-lg bg-slate-800 p-2 text-xs">
+                {PRONUNCIATION_PRESETS.map((preset) => <option key={preset}>{preset}</option>)}
+              </select>
+              <input value={pronunciationInput} onChange={(e) => setPronunciationInput(e.target.value)} placeholder="Freie Aussprache (z. B. Kay-Slash, Dii-Mon)" className="w-full rounded-lg bg-slate-800 p-2 text-xs" />
+              <select value={announcerStyleInput} onChange={(e) => setAnnouncerStyleInput(e.target.value as 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR')} className="w-full rounded-lg bg-slate-800 p-2 text-xs">
+                <option value="ARENA">Arena</option>
+                <option value="CLASSIC">Classic Caller</option>
+                <option value="HYPE">Hype</option>
+                <option value="COOL">Cool & clean</option>
+                <option value="INTIMIDATOR">Intimidator</option>
+              </select>
+              <button onClick={() => previewAnnouncement(trimmedOrFallback(nameInput), trimmedOrFallback(nicknameInput), resolvePronunciation(nicknameInput, pronunciationInput, pronunciationPreset), announcerStyleInput)} className="w-full rounded bg-slate-800 p-2 text-xs">
+                Ansage testen
+              </button>
+              <button onClick={() => setIntroAnnouncementEnabledInput((v) => !v)} className="w-full rounded bg-slate-800 p-2 text-xs text-left flex items-center justify-between">
+                <span>Bei Matchstart ansagen</span><span className={introAnnouncementEnabledInput ? 'text-emerald-300' : 'text-slate-400'}>{introAnnouncementEnabledInput ? 'AN' : 'AUS'}</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <button onClick={generateAvatarForModal} disabled={isGenerating} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1 disabled:opacity-60">
                 {isGenerating ? <><Loader2 size={12} className="animate-spin" /> Generiere...</> : <><Sparkles size={12} /> KI generieren</>}
@@ -340,6 +393,47 @@ export function PlayersPage() {
       )}
     </section>
   );
+}
+
+
+function trimmedOrFallback(value: string): string {
+  const t = value.trim();
+  return t.length > 0 ? t : 'Spieler';
+}
+
+function resolvePronunciation(nickname: string, customPronunciation: string, preset: PronunciationPreset): string {
+  const custom = customPronunciation.trim();
+  if (custom) return custom;
+  const nick = nickname.trim();
+  if (!nick) return '';
+  if (preset === 'Original') return nick;
+  if (preset === 'Deutsch klar') return nick.replace(/-/g, ' ').replace(/z/gi, 'ts');
+  if (preset === 'Englisch klar') return nick.replace(/-/g, ' ');
+  if (preset === 'Bühnenname langsam') return nick.split('').join(' ');
+  if (preset === 'Bühnenname hart') return `${nick}!`;
+  if (preset === 'Arena Hype') return `${nick}, let's go`; 
+  if (preset === 'Intimidator') return `The ${nick}`;
+  return nick;
+}
+
+function previewAnnouncement(name: string, nickname: string, pronunciation: string, style: 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR') {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  const nick = nickname ? ` "${pronunciation || nickname}" ` : ' ';
+  const line = style === 'HYPE'
+    ? `Make some noise! ${name}${nick}am Oche!`
+    : style === 'CLASSIC'
+      ? `Nächster Spieler: ${name}${nick}`
+      : style === 'COOL'
+        ? `${name}${nick}is ready.`
+        : style === 'INTIMIDATOR'
+          ? `Now entering: ${name}${nick}`
+          : `Auftritt für ${name}${nick}`;
+
+  const utterance = new SpeechSynthesisUtterance(line);
+  utterance.rate = style === 'HYPE' ? 1.05 : style === 'CLASSIC' ? 0.9 : 0.95;
+  utterance.pitch = style === 'INTIMIDATOR' ? 0.8 : 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
