@@ -137,6 +137,9 @@ export function DashboardPage() {
         <button onClick={() => navigate('/players')} className="rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
           Manage Players ({managedPlayers.length})
         </button>
+        <button onClick={() => navigate('/training')} className="col-span-2 rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
+          Open Training Center
+        </button>
       </div>
 
       {errorMessage && <p className="rounded-xl bg-amber-900/40 p-3 text-xs text-amber-100">{errorMessage}</p>}
