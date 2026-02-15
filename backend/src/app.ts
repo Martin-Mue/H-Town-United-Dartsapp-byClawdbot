@@ -82,6 +82,18 @@ export async function createApp(): Promise<FastifyInstance> {
     ranking: matchService.getGlobalRanking(),
   }));
 
+  app.get('/api/game/recent', async () => {
+    const matches = await matchService.listMatches();
+    return {
+      matches: matches.slice(-6).reverse().map((match) => ({
+        matchId: match.matchId,
+        mode: match.mode,
+        winnerPlayerId: match.winnerPlayerId,
+        players: match.players.map((p) => p.displayName),
+      })),
+    };
+  });
+
   app.get('/api/analytics/dashboard-summary', async () => {
     const matches = await matchService.listMatches();
     const players = matches.flatMap((match) => match.players);

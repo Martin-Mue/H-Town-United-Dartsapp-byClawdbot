@@ -16,6 +16,13 @@ interface GlobalRankingEntry {
   rating: number;
 }
 
+interface RecentMatchItem {
+  matchId: string;
+  mode: 'X01_301' | 'X01_501' | 'CRICKET' | 'CUSTOM';
+  winnerPlayerId: string | null;
+  players: string[];
+}
+
 type ManagedPlayer = {
   id: string;
   displayName: string;
@@ -28,13 +35,14 @@ type ManagedPlayer = {
 
 const PLAYER_STORAGE_KEY = 'htown-players';
 
-/** Dashboard with mobile pull-to-refresh style action and rich KPI cards. */
+/** Dashboard with live stats, ranking, quick actions and recent activity feed. */
 export function DashboardPage() {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ranking, setRanking] = useState<GlobalRankingEntry[]>([]);
+  const [recentMatches, setRecentMatches] = useState<RecentMatchItem[]>([]);
   const [clock, setClock] = useState(new Date());
   const activeMatchId = window.localStorage.getItem('htown-active-match-id');
 
@@ -52,17 +60,20 @@ export function DashboardPage() {
   const loadSummary = async () => {
     try {
       setErrorMessage(null);
-      const [summaryResponse, rankingResponse] = await Promise.all([
+      const [summaryResponse, rankingResponse, recentResponse] = await Promise.all([
         fetch('http://localhost:8080/api/analytics/dashboard-summary'),
         fetch('http://localhost:8080/api/global-ranking'),
+        fetch('http://localhost:8080/api/game/recent'),
       ]);
-      if (!summaryResponse.ok || !rankingResponse.ok) throw new Error('bad status');
+      if (!summaryResponse.ok || !rankingResponse.ok || !recentResponse.ok) throw new Error('bad status');
 
       const payload = (await summaryResponse.json()) as DashboardSummary;
       const rankingPayload = (await rankingResponse.json()) as { ranking: GlobalRankingEntry[] };
+      const recentPayload = (await recentResponse.json()) as { matches: RecentMatchItem[] };
 
       setSummary(payload);
       setRanking(rankingPayload.ranking.slice(0, 5));
+      setRecentMatches(recentPayload.matches);
     } catch {
       setErrorMessage('Backend summary unavailable. Start backend to enable live analytics.');
     }
@@ -83,7 +94,8 @@ export function DashboardPage() {
 
   return (
     <section className="space-y-3">
-      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+      <article className="relative overflow-hidden rounded-2xl card-bg p-5 shadow-lg shadow-black/20 border border-slate-700/30">
+        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-sky-400/10 blur-2xl" />
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
@@ -92,7 +104,7 @@ export function DashboardPage() {
               className="h-16 w-16 rounded-full border-2 border-slate-500 object-cover"
             />
             <div>
-              <h2 className="text-base font-semibold">H-Town United e.V.</h2>
+              <h2 className="text-lg font-semibold">H-Town United e.V.</h2>
               <p className="text-xs muted-text">Live club desk · {clock.toLocaleTimeString('de-DE')}</p>
             </div>
           </div>
@@ -130,28 +142,6 @@ export function DashboardPage() {
       {errorMessage && <p className="rounded-xl bg-amber-900/40 p-3 text-xs text-amber-100">{errorMessage}</p>}
 
       <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
-        <h3 className="text-sm font-semibold">Registered Players</h3>
-        <div className="mt-2 space-y-2">
-          {managedPlayers.slice(0, 4).map((player) => (
-            <div key={player.id} className="rounded-lg bg-slate-800 p-2 text-xs">
-              <span className="font-semibold">{player.displayName}</span>
-              <span className="muted-text"> · {player.preferredCheckoutMode.replace('_', ' ')}</span>
-            </div>
-          ))}
-          {managedPlayers.length === 0 && <p className="text-xs muted-text">No players stored yet.</p>}
-        </div>
-      </article>
-
-      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
-        <h3 className="text-sm font-semibold">Training Focus Today</h3>
-        <ul className="mt-2 list-disc pl-4 text-xs muted-text space-y-1">
-          <li>Checkout pressure sessions: {managedPlayers.filter((p) => Number(p.checkoutPercentage ?? 0) < 30).length} players</li>
-          <li>Scoring consistency drills: {managedPlayers.filter((p) => Number(p.currentAverage ?? 0) < 60).length} players</li>
-          <li>Clutch drills: {managedPlayers.filter((p) => Number(p.pressurePerformanceIndex ?? 0) < 65).length} players</li>
-        </ul>
-      </article>
-
-      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
         <h3 className="text-sm font-semibold">Global Ranking (ELO)</h3>
         <div className="mt-2 space-y-2 text-xs">
           {ranking.map((entry, index) => (
@@ -162,6 +152,28 @@ export function DashboardPage() {
           ))}
           {ranking.length === 0 && <p className="muted-text">No ranking entries yet.</p>}
         </div>
+      </article>
+
+      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Recent Matches</h3>
+        <div className="mt-2 space-y-2 text-xs">
+          {recentMatches.map((match) => (
+            <div key={match.matchId} className="rounded-lg bg-slate-800 p-2 flex items-center justify-between gap-2">
+              <span>{match.players.join(' vs ')}</span>
+              <span className="muted-text">{match.mode.replace('_', ' ')}</span>
+            </div>
+          ))}
+          {recentMatches.length === 0 && <p className="muted-text">No recent matches yet.</p>}
+        </div>
+      </article>
+
+      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Training Focus Today</h3>
+        <ul className="mt-2 list-disc pl-4 text-xs muted-text space-y-1">
+          <li>Checkout pressure sessions: {managedPlayers.filter((p) => Number(p.checkoutPercentage ?? 0) < 30).length} players</li>
+          <li>Scoring consistency drills: {managedPlayers.filter((p) => Number(p.currentAverage ?? 0) < 60).length} players</li>
+          <li>Clutch drills: {managedPlayers.filter((p) => Number(p.pressurePerformanceIndex ?? 0) < 65).length} players</li>
+        </ul>
       </article>
 
       <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
@@ -190,7 +202,7 @@ export function DashboardPage() {
 
 function StatCard({ title, value }: { title: string; value: string }) {
   return (
-    <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+    <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20 border border-slate-700/20">
       <p className="text-xs muted-text">{title}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </article>
