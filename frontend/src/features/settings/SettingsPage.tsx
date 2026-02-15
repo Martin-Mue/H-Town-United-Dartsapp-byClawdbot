@@ -3,10 +3,32 @@ import { useState } from 'react';
 /** Handles account-level preferences and destructive user actions. */
 export function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [voicePack, setVoicePack] = useState('Classic Arena');
+  const [hapticsEnabled, setHapticsEnabled] = useState(true);
 
   return (
     <section className="space-y-3">
-      <div className="rounded-2xl bg-panel p-4">Voice packs, haptics, and notification settings.</div>
+      <div className="rounded-2xl bg-panel p-4 space-y-3">
+        <h3 className="font-semibold">Experience</h3>
+        <label className="text-sm text-slate-300 block">Caller Voice Pack</label>
+        <select
+          value={voicePack}
+          onChange={(event) => setVoicePack(event.target.value)}
+          className="w-full rounded-lg bg-slate-800 p-2 text-sm"
+        >
+          <option>Classic Arena</option>
+          <option>Pro Championship</option>
+          <option>H-Town Signature</option>
+        </select>
+
+        <button
+          onClick={() => setHapticsEnabled((value) => !value)}
+          className="w-full rounded-lg bg-slate-800 p-2 text-sm text-left"
+        >
+          Haptic Feedback: <span className="font-semibold text-accent">{hapticsEnabled ? 'Enabled' : 'Disabled'}</span>
+        </button>
+      </div>
+
       <button className="w-full rounded-xl bg-red-800 p-3 font-medium" onClick={() => setConfirmDelete(true)}>
         Delete Account
       </button>

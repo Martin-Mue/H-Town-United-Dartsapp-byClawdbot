@@ -44,6 +44,15 @@ export function DashboardPage() {
           />
         </div>
       </article>
+
+      <article className="rounded-2xl bg-panel p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Gamification</h3>
+        <div className="mt-2 space-y-2 text-sm">
+          <p className="rounded-lg bg-slate-800 p-2">🏅 Skill Level: <span className="text-accent font-semibold">Gold</span></p>
+          <p className="rounded-lg bg-slate-800 p-2">🎯 Monthly Challenge: Hit 20 successful checkouts</p>
+          <p className="rounded-lg bg-slate-800 p-2">🔥 Rookie Award Race: 2nd place</p>
+        </div>
+      </article>
     </section>
   );
 }
