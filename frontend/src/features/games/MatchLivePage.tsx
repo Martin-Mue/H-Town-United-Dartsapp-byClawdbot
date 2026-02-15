@@ -54,6 +54,11 @@ export function MatchLivePage() {
   const [preMatchSeen, setPreMatchSeen] = useState(false);
   const [playerTurnScores, setPlayerTurnScores] = useState<Record<string, number[]>>({});
   const [cameraDetection, setCameraDetection] = useState<{ turnId: string; points: number; multiplier: 1 | 2 | 3; confidence: number; requiresManualReview: boolean } | null>(null);
+  const [quickEntryMode, setQuickEntryMode] = useState(false);
+  const [quickTurnPoints, setQuickTurnPoints] = useState('');
+  const [quickFinalMultiplier, setQuickFinalMultiplier] = useState<1 | 2 | 3>(2);
+  const [legStarterPlayerId, setLegStarterPlayerId] = useState<string | null>(null);
+  const [lastLegSnapshot, setLastLegSnapshot] = useState('');
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -158,6 +163,57 @@ export function MatchLivePage() {
 
   const isCricket = state?.mode === 'CRICKET';
   const active = useMemo(() => state?.players.find((p) => p.playerId === state.activePlayerId), [state]);
+
+  const leadInfo = useMemo(() => {
+    if (!state || state.players.length < 2) return null;
+    const [a, b] = state.scoreboard;
+    if (!a || !b) return null;
+
+    const setLead = a.sets === b.sets ? 'Gleichstand' : a.sets > b.sets ? `${state.players.find((p) => p.playerId === a.playerId)?.displayName ?? 'Spieler 1'} führt in Sätzen` : `${state.players.find((p) => p.playerId === b.playerId)?.displayName ?? 'Spieler 2'} führt in Sätzen`;
+    const legLead = a.legs === b.legs ? 'Legs ausgeglichen' : a.legs > b.legs ? `${state.players.find((p) => p.playerId === a.playerId)?.displayName ?? 'Spieler 1'} führt in Legs` : `${state.players.find((p) => p.playerId === b.playerId)?.displayName ?? 'Spieler 2'} führt in Legs`;
+    return { setLead, legLead };
+  }, [state]);
+
+  const checkoutSuggestions = useMemo(() => {
+    if (!active || isCricket) return [] as string[];
+    const r = active.score;
+    const table: Record<number, string[]> = {
+      170: ['T20 T20 Bull'], 167: ['T20 T19 Bull'], 164: ['T20 T18 Bull'], 161: ['T20 T17 Bull'],
+      160: ['T20 T20 D20'], 158: ['T20 T20 D19'], 157: ['T20 T19 D20'], 156: ['T20 T20 D18'],
+      155: ['T20 T19 D19'], 154: ['T20 T18 D20'], 153: ['T20 T19 D18'], 152: ['T20 T20 D16'],
+      151: ['T20 T17 D20'], 150: ['T20 T18 D18'], 149: ['T20 T19 D16'], 148: ['T20 T16 D20'],
+      147: ['T20 T17 D18'], 146: ['T20 T18 D16'], 145: ['T20 T15 D20'], 144: ['T20 T20 D12'],
+      143: ['T20 T17 D16'], 142: ['T20 T14 D20'], 141: ['T20 T19 D12'], 140: ['T20 T20 D10'],
+      132: ['Bull Bull D16'], 121: ['T20 11 Bull'], 100: ['T20 D20'], 81: ['T19 D12'], 76: ['T20 D8'],
+      70: ['T18 D8'], 68: ['T20 D4', 'S20 D24'], 64: ['T16 D8'], 60: ['20 D20'], 50: ['18 D16', '10 D20'],
+      40: ['D20'], 32: ['D16'], 24: ['D12'], 16: ['D8'], 8: ['D4'],
+    };
+    if (table[r]) return table[r];
+    if (r <= 40 && r % 2 === 0) return [`D${r / 2}`];
+    if (r > 40 && r <= 170) return ['Setup auf Lieblingsdoppel spielen'];
+    return [];
+  }, [active, isCricket]);
+
+  useEffect(() => {
+    if (!state) return;
+    const snapshot = state.scoreboard.map((s) => `${s.playerId}:${s.legs}`).join('|');
+    if (!legStarterPlayerId) setLegStarterPlayerId(state.activePlayerId);
+    if (lastLegSnapshot && snapshot !== lastLegSnapshot) {
+      setLegStarterPlayerId(state.activePlayerId);
+    }
+    setLastLegSnapshot(snapshot);
+  }, [state, legStarterPlayerId, lastLegSnapshot]);
+
+  const removePendingDart = (index: number) => {
+    setPendingX01((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const replacePendingDart = (index: number) => {
+    const points = Math.min(60, selected === 50 ? 50 : selected * multiplier);
+    const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${multiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${multiplier}`;
+    setPendingX01((prev) => prev.map((dart, i) => (i === index ? { points, multiplier, label } : dart)));
+  };
+
 
   const toggleCamera = async () => {
     if (cameraOn) {
@@ -311,14 +367,15 @@ export function MatchLivePage() {
           if (nextState.winnerPlayerId) break;
         }
       } else {
-        if (pendingX01.length === 0) {
+        if (!quickEntryMode && pendingX01.length === 0) {
           setErrorMessage('Bitte bis zu 3 Darts hinzufügen.');
           return;
         }
 
-        const totalPoints = pendingX01.reduce((sum, dart) => sum + dart.points, 0);
+        const quickPoints = Number(quickTurnPoints || 0);
+        const totalPoints = quickEntryMode ? Math.max(0, Math.min(180, quickPoints)) : pendingX01.reduce((sum, dart) => sum + dart.points, 0);
         turnScoreForStats = totalPoints;
-        const finalDartMultiplier = pendingX01[pendingX01.length - 1]?.multiplier ?? 1;
+        const finalDartMultiplier = quickEntryMode ? quickFinalMultiplier : (pendingX01[pendingX01.length - 1]?.multiplier ?? 1);
 
         nextState = await apiClient.registerTurn(nextState.matchId, {
           points: totalPoints,
@@ -332,6 +389,7 @@ export function MatchLivePage() {
       setTurnCounter((t) => t + 1);
       setDartCounter((d) => d + (isCricket ? pendingCricket.length : pendingX01.length));
       clearTurn();
+      if (quickEntryMode) setQuickTurnPoints('');
 
       if (nextState.winnerPlayerId) {
         saveHistory(nextState, updatedTurnScores);
@@ -429,6 +487,18 @@ export function MatchLivePage() {
       </div>
 
       <p className="primary-text text-sm font-semibold">{active?.displayName} wirft (3 Darts)</p>
+      {leadInfo && (
+        <div className="w-full max-w-xl rounded-lg border soft-border bg-slate-900/60 p-2 text-xs">
+          <p>{leadInfo.setLead} · {leadInfo.legLead}</p>
+          <p className="muted-text mt-1">Leg begonnen von: {state.players.find((p) => p.playerId === legStarterPlayerId)?.displayName ?? '—'}</p>
+        </div>
+      )}
+      {!isCricket && checkoutSuggestions.length > 0 && (
+        <div className="w-full max-w-xl rounded-lg border soft-border bg-slate-900/60 p-2 text-xs">
+          <p className="muted-text">Checkout Vorschläge ({active?.score} Rest)</p>
+          <p className="primary-text">{checkoutSuggestions.join(' · ')}</p>
+        </div>
+      )}
 
       <div className="w-full max-w-xl rounded-2xl border soft-border card-bg p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -492,6 +562,36 @@ export function MatchLivePage() {
               </div>
             )}
             <p className="text-xs muted-text">Turn: {pendingX01.map((d, i) => `#${i + 1} ${d.label}=${d.points}`).join(' · ') || '—'}</p>
+            {pendingX01.length > 0 && (
+              <div className="space-y-1">
+                {pendingX01.map((d, i) => (
+                  <div key={`${d.label}-${i}`} className="rounded bg-slate-900/60 p-1 text-[11px] flex items-center justify-between">
+                    <span>#{i + 1} {d.label} = {d.points}</span>
+                    <div className="flex gap-1">
+                      <button onClick={() => replacePendingDart(i)} className="rounded bg-slate-800 px-2">ersetzen</button>
+                      <button onClick={() => removePendingDart(i)} className="rounded bg-slate-800 px-2">entfernen</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="rounded border soft-border bg-slate-900/60 p-2 space-y-2">
+              <button onClick={() => setQuickEntryMode((v) => !v)} className="w-full rounded bg-slate-800 p-1.5 text-xs text-left flex items-center justify-between">
+                <span>Alternative Eingabe: Gesamt-3-Dart Ergebnis</span>
+                <span className={quickEntryMode ? 'text-emerald-300' : 'text-slate-400'}>{quickEntryMode ? 'AN' : 'AUS'}</span>
+              </button>
+              {quickEntryMode && (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <input value={quickTurnPoints} onChange={(e) => setQuickTurnPoints(e.target.value)} type="number" min={0} max={180} className="rounded bg-slate-800 p-2" placeholder="Gesamtergebnis (0-180)" />
+                  <select value={quickFinalMultiplier} onChange={(e) => setQuickFinalMultiplier(Number(e.target.value) as 1 | 2 | 3)} className="rounded bg-slate-800 p-2">
+                    <option value={1}>Final Dart Single</option>
+                    <option value={2}>Final Dart Double</option>
+                    <option value={3}>Final Dart Triple</option>
+                  </select>
+                </div>
+              )}
+            </div>
           </>
         )}
 
