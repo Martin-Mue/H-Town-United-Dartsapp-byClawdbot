@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
@@ -11,13 +11,34 @@ interface DashboardSummary {
   activeMatchIds: string[];
 }
 
+type ManagedPlayer = {
+  id: string;
+  displayName: string;
+  preferredCheckoutMode: 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
+  notes: string;
+};
+
+const PLAYER_STORAGE_KEY = 'htown-players';
+
 /** Dashboard with mobile pull-to-refresh style action and rich KPI cards. */
 export function DashboardPage() {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [clock, setClock] = useState(new Date());
   const activeMatchId = window.localStorage.getItem('htown-active-match-id');
+
+  const managedPlayers = useMemo<ManagedPlayer[]>(() => {
+    const raw = window.localStorage.getItem(PLAYER_STORAGE_KEY);
+    if (!raw) return [];
+
+    try {
+      return JSON.parse(raw) as ManagedPlayer[];
+    } catch {
+      return [];
+    }
+  }, [refreshing]);
 
   const loadSummary = async () => {
     try {
@@ -33,6 +54,8 @@ export function DashboardPage() {
 
   useEffect(() => {
     void loadSummary();
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const refresh = async () => {
@@ -45,16 +68,21 @@ export function DashboardPage() {
   return (
     <section className="space-y-3">
       <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
-        <div className="flex items-center gap-3">
-          <img
-            src="/branding/h-town-united-logo-tree.jpg"
-            alt="H-Town United Tree Logo"
-            className="h-16 w-16 rounded-full border-2 border-slate-500 object-cover"
-          />
-          <div>
-            <h2 className="text-base font-semibold">H-Town United e.V.</h2>
-            <p className="text-xs muted-text">Tree identity active across the platform design</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img
+              src="/branding/h-town-united-logo-tree.jpg"
+              alt="H-Town United Tree Logo"
+              className="h-16 w-16 rounded-full border-2 border-slate-500 object-cover"
+            />
+            <div>
+              <h2 className="text-base font-semibold">H-Town United e.V.</h2>
+              <p className="text-xs muted-text">Live club desk · {clock.toLocaleTimeString('de-DE')}</p>
+            </div>
           </div>
+          <button onClick={() => navigate('/new-game')} className="rounded-xl bg-sky-400 px-3 py-2 text-xs font-semibold text-slate-900">
+            New Match
+          </button>
         </div>
       </article>
 
@@ -67,18 +95,36 @@ export function DashboardPage() {
         </button>
       )}
 
-      <button onClick={refresh} className="w-full rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
-        {refreshing ? 'Refreshing club dashboard…' : 'Pull to refresh'}
-      </button>
-
-      {errorMessage && <p className="rounded-xl bg-amber-900/40 p-3 text-xs text-amber-100">{errorMessage}</p>}
-
       <div className="grid grid-cols-2 gap-3">
         <StatCard title="Club Avg" value={summary ? `${summary.clubAverage}` : '—'} />
         <StatCard title="Checkout %" value={summary ? `${summary.checkoutAverage}%` : '—'} />
         <StatCard title="Live Matches" value={summary ? `${summary.liveMatches}` : '—'} />
         <StatCard title="Top 180s" value={summary ? `${summary.topScore180Count}` : '—'} />
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={refresh} className="rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
+          {refreshing ? 'Refreshing…' : 'Refresh Dashboard'}
+        </button>
+        <button onClick={() => navigate('/players')} className="rounded-xl bg-slate-800 p-3 text-sm text-slate-200">
+          Manage Players ({managedPlayers.length})
+        </button>
+      </div>
+
+      {errorMessage && <p className="rounded-xl bg-amber-900/40 p-3 text-xs text-amber-100">{errorMessage}</p>}
+
+      <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Registered Players</h3>
+        <div className="mt-2 space-y-2">
+          {managedPlayers.slice(0, 4).map((player) => (
+            <div key={player.id} className="rounded-lg bg-slate-800 p-2 text-xs">
+              <span className="font-semibold">{player.displayName}</span>
+              <span className="muted-text"> · {player.preferredCheckoutMode.replace('_', ' ')}</span>
+            </div>
+          ))}
+          {managedPlayers.length === 0 && <p className="text-xs muted-text">No players stored yet.</p>}
+        </div>
+      </article>
 
       <article className="rounded-2xl card-bg p-4 shadow-lg shadow-black/20">
         <h3 className="text-sm font-semibold">Average Progression</h3>
