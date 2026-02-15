@@ -51,7 +51,7 @@ export function TrainingPage() {
   const [cameraHint, setCameraHint] = useState<string | null>(null);
   const [trainingMultiplier, setTrainingMultiplier] = useState<1 | 2 | 3>(1);
   const [trainingSegment, setTrainingSegment] = useState<number>(20);
-  const [trainingThrows, setTrainingThrows] = useState<Array<{ base: number; mult: 1 | 2 | 3; points: number }>>([]);
+  const [trainingThrows, setTrainingThrows] = useState<Array<{ base: number; mult: 1 | 2 | 3; points: number; target: number; hitTarget: boolean }>>([]);
   const [trainingTarget, setTrainingTarget] = useState<number>(20);
 
 
@@ -97,18 +97,41 @@ export function TrainingPage() {
   }, [ruleFilter]);
 
 
+
+  const strictMetrics = useMemo(() => {
+    const attempts = trainingThrows.length;
+    const targetHits = trainingThrows.filter((d) => d.hitTarget).length;
+    const targetMisses = attempts - targetHits;
+    const t20Hits = trainingThrows.filter((d) => d.base === 20 && d.mult === 3).length;
+
+    let checkoutAttempts = 0;
+    let checkoutsCompleted = 0;
+    for (let i = 0; i < trainingThrows.length; i += 3) {
+      const turn = trainingThrows.slice(i, i + 3);
+      if (turn.length === 0) continue;
+      checkoutAttempts += 1;
+      const target = turn[0].target;
+      const sum = turn.reduce((acc, t) => acc + t.points, 0);
+      const last = turn[turn.length - 1];
+      const validOut = last.mult === 2 || last.base === 50;
+      if (sum === target && validOut) checkoutsCompleted += 1;
+    }
+
+    return { attempts, targetHits, targetMisses, t20Hits, checkoutAttempts: Math.max(1, checkoutAttempts), checkoutsCompleted };
+  }, [trainingThrows]);
+
   const autoMetrics = useMemo(() => {
     const darts = trainingThrows;
     const attempts = darts.length;
-    const hits = darts.filter((d) => d.mult === 2 && d.base > 0).length;
+    const hits = strictMetrics.targetHits;
     const highestReached = attempts > 0 ? Math.max(...darts.map((d) => (d.base >= 1 && d.base <= 20 ? d.base : 1))) : 0;
     const dartsUsed = attempts;
-    const checkoutAttempts = Math.max(1, Math.floor(attempts / 3));
-    const checkoutsCompleted = darts.filter((d) => d.mult === 2 || d.base === 50).length;
+    const checkoutAttempts = strictMetrics.checkoutAttempts;
+    const checkoutsCompleted = strictMetrics.checkoutsCompleted;
     const avgDartsForCheckout = attempts > 0 ? Math.max(1, Math.min(9, Math.round(attempts / Math.max(1, checkoutsCompleted)))) : 9;
     const scenarioCount = Math.max(1, Math.floor(attempts / 3));
     const wonScenarios = Math.floor(darts.filter((d) => d.points >= 40).length / 2);
-    const t20Hits = darts.filter((d) => d.base === 20 && d.mult === 3).length;
+    const t20Hits = strictMetrics.t20Hits;
     const t20Darts = attempts;
 
     return { attempts, hits, highestReached, dartsUsed, checkoutAttempts, checkoutsCompleted, avgDartsForCheckout, scenarioCount, wonScenarios, t20Hits, t20Darts, hasData: attempts > 0 };
@@ -173,23 +196,40 @@ export function TrainingPage() {
   };
 
   const addTrainingDart = () => {
-    if (trainingThrows.length >= 120) return;
-    const forcedMultiplier = selectedDrill?.id === 'doubles' ? 2 : trainingMultiplier;
+    if (trainingThrows.length >= 120 || !selectedDrill) return;
+    const forcedMultiplier = selectedDrill.id === 'doubles' ? 2 : trainingMultiplier;
     const points = trainingSegment === 50 ? 50 : Math.min(60, trainingSegment * forcedMultiplier);
-    const next = { base: trainingSegment, mult: forcedMultiplier as 1 | 2 | 3, points };
-    setTrainingThrows((prev) => [...prev, next]);
 
-    if (selectedDrill?.id === 'clock') {
-      const hitClockTarget = trainingTarget === 25
-        ? (trainingSegment === 25 || trainingSegment === 50)
-        : trainingSegment === trainingTarget;
-      if (hitClockTarget) setTrainingTarget((t) => (t >= 20 ? 25 : t + 1));
+    const hitClockTarget = trainingTarget === 25
+      ? (trainingSegment === 25 || trainingSegment === 50)
+      : trainingSegment === trainingTarget;
+    const hitDoubleTarget = forcedMultiplier === 2 && trainingSegment === trainingTarget;
+    const hitT20Target = trainingSegment === 20 && forcedMultiplier === 3;
+
+    const hitTarget = selectedDrill.id === 'clock'
+      ? hitClockTarget
+      : selectedDrill.id === 'doubles'
+        ? hitDoubleTarget
+        : selectedDrill.id === 't20'
+          ? hitT20Target
+          : true;
+
+    const next = { base: trainingSegment, mult: forcedMultiplier as 1 | 2 | 3, points, target: trainingTarget, hitTarget };
+    const nextThrows = [...trainingThrows, next];
+    setTrainingThrows(nextThrows);
+
+    if (selectedDrill.id === 'clock' && hitClockTarget) {
+      setTrainingTarget((t) => (t >= 20 ? 25 : t + 1));
     }
-    if (selectedDrill?.id === 'doubles') {
-      if (forcedMultiplier === 2 && trainingSegment === trainingTarget) setTrainingTarget((t) => Math.min(20, t + 1));
+    if (selectedDrill.id === 'doubles' && hitDoubleTarget) {
+      setTrainingTarget((t) => Math.min(20, t + 1));
     }
-    if (selectedDrill?.id === 'random' && trainingSegment * forcedMultiplier === trainingTarget) {
-      setTrainingTarget(61 + Math.floor(Math.random() * 40));
+    if (selectedDrill.id === 'random' && nextThrows.length % 3 === 0) {
+      const turn = nextThrows.slice(-3);
+      const sum = turn.reduce((acc, d) => acc + d.points, 0);
+      const last = turn[turn.length - 1];
+      const validOut = last.mult === 2 || last.base === 50;
+      if (sum === trainingTarget && validOut) setTrainingTarget(61 + Math.floor(Math.random() * 40));
     }
   };
 
@@ -248,6 +288,7 @@ export function TrainingPage() {
             <h2 className="text-xl uppercase mt-2">{selectedDrill.name}</h2>
             <p className="text-sm muted-text">{selectedDrill.description}</p>
             <p className="text-xs primary-text mt-1">Aktuelles Ziel: {selectedDrill.id === 'clock' ? (trainingTarget === 25 ? 'Bull' : trainingTarget) : selectedDrill.id === 'doubles' ? `D${trainingTarget}` : selectedDrill.id === 't20' ? 'T20' : selectedDrill.id === 'finish' ? `${trainingTarget} Checkout` : selectedDrill.id === 'random' ? `${trainingTarget} Checkout` : selectedDrill.id === 'pressure' ? `${trainingTarget} Rest` : trainingTarget}</p>
+            <p className="text-[11px] muted-text mt-1">Nur regelkonforme Treffer zählen als Zieltreffer.</p>
           </div>
 
           <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)} className="w-full rounded-xl bg-slate-800 p-2 text-sm">
@@ -294,12 +335,13 @@ export function TrainingPage() {
             {selectedDrill.id === 'random' && <button onClick={() => setTrainingTarget(61 + Math.floor(Math.random() * 40))} className="w-full rounded bg-slate-800 p-1.5 text-xs">Neue Zufalls-Zielzahl</button>}
             <p className="text-[11px] muted-text">Darts: {trainingThrows.length} · Letzter: {trainingThrows.at(-1) ? `${trainingThrows.at(-1)?.base}x${trainingThrows.at(-1)?.mult}` : '—'}</p>
             <p className="text-[11px] muted-text">Je nach Modus wird ein Zielsegment/Zielcheckout vorgegeben und live aktualisiert. Around the Clock endet mit Bull/Bullseye.</p>
+            <p className="text-[11px] muted-text mt-1">Nur regelkonforme Treffer zählen als Zieltreffer.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <ReadOnlyField label="Versuche (automatisch)" value={autoMetrics.attempts} />
-            <ReadOnlyField label="Double-Treffer (automatisch)" value={autoMetrics.hits} />
-            <ReadOnlyField label="Höchste Zahl (automatisch)" value={autoMetrics.highestReached} />
+            <ReadOnlyField label="Zieltreffer (automatisch)" value={autoMetrics.hits} />
+            <ReadOnlyField label="Zielverfehlungen" value={strictMetrics.targetMisses} />
             <ReadOnlyField label="Benötigte Darts (automatisch)" value={autoMetrics.dartsUsed} />
             <ReadOnlyField label="Checkout-Versuche (automatisch)" value={autoMetrics.checkoutAttempts} />
             <ReadOnlyField label="Erfolgreiche Checkouts (automatisch)" value={autoMetrics.checkoutsCompleted} />
@@ -312,6 +354,7 @@ export function TrainingPage() {
           <div className="rounded-lg bg-slate-800 p-2 text-xs muted-text">
             <p>Berechneter Trainingsscore: <span className="primary-text font-semibold">{drillScorePreview ?? "—"}</span>{drillScorePreview !== null ? "/100" : ""}</p>
             <p className="mt-1">Interpretation: erst nach erfassten Darts sinnvoll. &lt;40 = Trainingsbedarf · 40-70 = solide Basis · &gt;70 = stark.</p>
+            <p className="text-[11px] muted-text mt-1">Nur regelkonforme Treffer zählen als Zieltreffer.</p>
           </div>
 
           <button disabled={!selectedPlayerId || !autoMetrics.hasData} onClick={completeSession} className="w-full rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-60">
