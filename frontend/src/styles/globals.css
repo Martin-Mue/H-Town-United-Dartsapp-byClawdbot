@@ -4,6 +4,20 @@
 
 :root {
   color-scheme: dark;
+  --app-bg: #0f1724;
+  --app-text: #ffffff;
+  --panel-bg: rgba(27, 35, 51, 0.95);
+  --card-bg: #1f2937;
+  --muted-text: #94a3b8;
+}
+
+:root.theme-light {
+  color-scheme: light;
+  --app-bg: #f1f5f9;
+  --app-text: #0f172a;
+  --panel-bg: rgba(255, 255, 255, 0.95);
+  --card-bg: #e2e8f0;
+  --muted-text: #475569;
 }
 
 html,
@@ -11,6 +25,31 @@ body,
 #root {
   height: 100%;
   overscroll-behavior: none;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.app-bg {
+  background: var(--app-bg);
+}
+
+.app-text {
+  color: var(--app-text);
+}
+
+.panel-bg {
+  background: var(--panel-bg);
+}
+
+.card-bg {
+  background: var(--card-bg);
+}
+
+.muted-text {
+  color: var(--muted-text);
 }
 
 button,

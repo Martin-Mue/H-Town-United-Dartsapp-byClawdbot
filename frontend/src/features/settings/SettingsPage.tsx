@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useThemeMode } from '../../app/providers/ThemeProvider';
 
 /** Handles account-level preferences and destructive user actions. */
 export function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [voicePack, setVoicePack] = useState('Classic Arena');
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
+  const { mode, toggleMode } = useThemeMode();
 
   return (
     <section className="space-y-3">
@@ -26,6 +28,10 @@ export function SettingsPage() {
           className="w-full rounded-lg bg-slate-800 p-2 text-sm text-left"
         >
           Haptic Feedback: <span className="font-semibold text-accent">{hapticsEnabled ? 'Enabled' : 'Disabled'}</span>
+        </button>
+
+        <button onClick={toggleMode} className="w-full rounded-lg bg-slate-800 p-2 text-sm text-left">
+          Theme Mode: <span className="font-semibold text-accent">{mode === 'dark' ? 'Dark' : 'Light'}</span>
         </button>
       </div>
 
