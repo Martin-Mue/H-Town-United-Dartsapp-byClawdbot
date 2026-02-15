@@ -22,6 +22,11 @@ export class CricketBoardState {
     playerMarks.set(targetNumber, Math.min(3, current + multiplier));
   }
 
+  /** Returns marks count of one target number for one player. */
+  public getMarks(playerId: string, targetNumber: number): number {
+    return this.marksByPlayer.get(playerId)?.get(targetNumber) ?? 0;
+  }
+
   /** Returns true when player has closed every cricket number. */
   public isClosed(playerId: string): boolean {
     const playerMarks = this.marksByPlayer.get(playerId);

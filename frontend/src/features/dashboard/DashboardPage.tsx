@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
+import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 
 /** Dashboard with mobile pull-to-refresh style action and rich KPI cards. */
 export function DashboardPage() {
@@ -21,6 +23,27 @@ export function DashboardPage() {
         <StatCard title="Live Matches" value="8" />
         <StatCard title="Top 180s" value="43" />
       </div>
+
+      <article className="rounded-2xl bg-panel p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Average Progression</h3>
+        <div className="mt-3">
+          <AverageTrendChart values={[54, 58, 61, 60, 66, 68, 71]} />
+        </div>
+      </article>
+
+      <article className="rounded-2xl bg-panel p-4 shadow-lg shadow-black/20">
+        <h3 className="text-sm font-semibold">Throw Heatmap</h3>
+        <div className="mt-3">
+          <ThrowHeatmapGrid
+            intensity={[
+              [0.2, 0.4, 0.7, 0.5, 0.3, 0.2],
+              [0.3, 0.8, 0.9, 0.8, 0.4, 0.3],
+              [0.4, 0.9, 1, 0.9, 0.5, 0.4],
+              [0.3, 0.7, 0.8, 0.7, 0.4, 0.3],
+            ]}
+          />
+        </div>
+      </article>
     </section>
   );
 }
