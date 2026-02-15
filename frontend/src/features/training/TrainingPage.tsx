@@ -43,6 +43,7 @@ const LOG_KEY = 'htown-training-log';
 export function TrainingPage() {
   const [selectedDrill, setSelectedDrill] = useState<TrainingDrill | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [ruleFilter, setRuleFilter] = useState<'all' | 'game' | 'training'>('all');
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [doneLabel, setDoneLabel] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -83,6 +84,16 @@ export function TrainingPage() {
   }, [doneLabel]);
 
   const filteredDrills = filterCategory === 'all' ? DRILLS : DRILLS.filter((d) => d.category === filterCategory);
+
+  const syncedRules = useMemo(() => {
+    const playableGameRules = new Set(['x01-501', 'cricket']);
+    const playableTrainingRules = new Set(['around-clock', 'checkout-121', 't20-100']);
+
+    return MODE_RULES.map((rule) => {
+      const available = rule.kind === 'game' ? playableGameRules.has(rule.id) : playableTrainingRules.has(rule.id);
+      return { ...rule, available };
+    }).filter((rule) => (ruleFilter === 'all' ? true : rule.kind === ruleFilter));
+  }, [ruleFilter]);
 
   const computeScore = (drill: TrainingDrill): { score: number; metrics: Record<string, number> } => {
     switch (drill.id) {
@@ -364,11 +375,33 @@ export function TrainingPage() {
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2 flex items-center gap-2"><BookOpen size={14} /> Spiel- & Trainingsregeln</h3>
-        <p className="text-xs muted-text mb-2">Alle Modi mit Kurzregeln und Trainingsziel.</p>
+        <p className="text-xs muted-text mb-2">Filterbar und mit dem aktuell verfügbaren Modusumfang synchronisiert.</p>
+
+        <div className="flex gap-2 mb-2">
+          {([
+            { key: 'all', label: 'Alle' },
+            { key: 'game', label: 'Spielmodi' },
+            { key: 'training', label: 'Trainingsmodi' },
+          ] as const).map((entry) => (
+            <button
+              key={entry.key}
+              onClick={() => setRuleFilter(entry.key)}
+              className={`rounded px-2 py-1 text-[11px] ${ruleFilter === entry.key ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800 muted-text'}`}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-2 max-h-80 overflow-auto pr-1">
-          {MODE_RULES.map((rule) => (
+          {syncedRules.map((rule) => (
             <details key={rule.id} className="rounded bg-slate-800 p-2 text-xs">
-              <summary className="cursor-pointer font-semibold">{rule.title} <span className="muted-text">({rule.kind === 'game' ? 'Spielmodus' : 'Trainingsmodus'})</span></summary>
+              <summary className="cursor-pointer font-semibold flex items-center justify-between gap-2">
+                <span>{rule.title} <span className="muted-text">({rule.kind === 'game' ? 'Spielmodus' : 'Trainingsmodus'})</span></span>
+                <span className={`text-[10px] rounded px-1.5 py-0.5 ${rule.available ? 'bg-emerald-900/40 text-emerald-200' : 'bg-amber-900/40 text-amber-200'}`}>
+                  {rule.available ? 'verfügbar' : 'geplant'}
+                </span>
+              </summary>
               <p className="mt-2"><span className="muted-text">Regeln:</span> {rule.rules}</p>
               <p className="mt-1"><span className="muted-text">Trainiert:</span> {rule.trains}</p>
             </details>
