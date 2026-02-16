@@ -16,6 +16,8 @@ export function PlayerProfilePage() {
   const [elo, setElo] = useState<Array<{ playerId: string; rating: number }>>([]);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState<{ nickname: string; nicknamePronunciation: string; throwingArm: 'RIGHT' | 'LEFT' | 'BOTH'; gripStyle: string; dartWeightGrams: string; seasonsPlayed: string; announcerStyle: 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR'; introAnnouncementEnabled: boolean }>({ nickname: '', nicknamePronunciation: '', throwingArm: 'RIGHT', gripStyle: '', dartWeightGrams: '', seasonsPlayed: '0', announcerStyle: 'ARENA', introAnnouncementEnabled: true });
+  const [trendWindow, setTrendWindow] = useState<'5' | '10' | 'all'>('10');
+  const [trendMode, setTrendMode] = useState<'match' | 'mixed'>('match');
 
   const players = useMemo<ManagedPlayer[]>(() => {
     try {
@@ -70,19 +72,29 @@ export function PlayerProfilePage() {
   }, []);
 
   const trend = useMemo(() => {
-    const base = player?.currentAverage ?? 45;
-    return [base - 8, base - 4, base - 2, base, base + 1].map((v) => Math.max(20, Math.round(v)));
-  }, [player?.currentAverage]);
+    if (!player) return [42, 46, 49, 53, 55];
 
-  const heat = useMemo(() => {
-    const p = ((player?.pressurePerformanceIndex ?? 50) as number) / 100;
-    return [
-      [0.2, 0.3, 0.4, p, 0.5, 0.3],
-      [0.3, p, 0.5, 0.6, p, 0.4],
-      [0.2, 0.4, p, 0.8, 0.6, 0.3],
-      [0.1, 0.3, 0.5, p, 0.4, 0.2],
-    ];
-  }, [player?.pressurePerformanceIndex]);
+    const sorted = [...recentMatches]
+      .filter((m) => m.players.some((p) => p.id === player.id || p.name === player.displayName))
+      .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
+
+    const values = sorted.map((match) => {
+      const turns = match.playerTurnScores?.[player.id] ?? [];
+      if (turns.length === 0) return null;
+      const avg = turns.reduce((acc, v) => acc + v, 0) / turns.length;
+      return Math.max(10, Math.min(120, Number(avg.toFixed(1))));
+    }).filter((v): v is number => v !== null);
+
+    const limited = trendWindow === 'all'
+      ? values
+      : values.slice(-Number(trendWindow));
+
+    if (limited.length > 1) return limited;
+    const base = player.currentAverage ?? 45;
+    return trendMode === 'mixed'
+      ? [base - 6, base - 3, base, base + 1, base + 2].map((v) => Math.max(20, Math.round(v)))
+      : [base - 4, base - 2, base, base + 1, base + 1].map((v) => Math.max(20, Math.round(v)));
+  }, [player, recentMatches, trendWindow, trendMode]);
 
   const playerStats = useMemo(() => {
     if (!player) return null;
@@ -98,6 +110,12 @@ export function PlayerProfilePage() {
     const countAtLeast = (threshold: number) => turns.filter((value) => value >= threshold).length;
     return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: countAtLeast(bucket) }));
   }, [personalMatches, player]);
+
+  const heatLabels = ['45+', '60+', '80+', '100+', '120+', '140+', '160+', '180'];
+  const heat = useMemo(() => {
+    const values = personalScoringDistribution.map((row) => row.hits);
+    return [values.slice(0, 4), values.slice(4, 8)];
+  }, [personalScoringDistribution]);
 
 
   if (!player) return <p className="card-bg rounded-xl p-4">Spielerprofil nicht gefunden.</p>;
@@ -218,15 +236,28 @@ export function PlayerProfilePage() {
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
-        <h3 className="text-sm uppercase mb-2">Trendlinie Trefferbilanz</h3>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h3 className="text-sm uppercase">Trendlinie Trefferbilanz</h3>
+          <div className="flex gap-1">
+            <select value={trendMode} onChange={(e) => setTrendMode(e.target.value as 'match' | 'mixed')} className="rounded bg-slate-800 p-1 text-[11px]">
+              <option value="match">Nur Matchdaten</option>
+              <option value="mixed">Match + Profilmix</option>
+            </select>
+            <select value={trendWindow} onChange={(e) => setTrendWindow(e.target.value as '5' | '10' | 'all')} className="rounded bg-slate-800 p-1 text-[11px]">
+              <option value="5">letzte 5</option>
+              <option value="10">letzte 10</option>
+              <option value="all">alle</option>
+            </select>
+          </div>
+        </div>
         <p className="text-xs muted-text mb-2">Zeigt die Entwicklung des 3-Dart-Average (höher = besser).</p>
         <AverageTrendChart values={trend} />
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Treffer-Heatmap</h3>
-        <p className="text-xs muted-text mb-2">Dunkler = niedrige Trefferstabilität, heller = stabile Trefferzonen.</p>
-        <ThrowHeatmapGrid intensity={heat} />
+        <p className="text-xs muted-text mb-2">Nachvollziehbare Häufigkeit je Scoring-Klasse (Matchdaten).</p>
+        <ThrowHeatmapGrid intensity={heat} labels={heatLabels} />
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
