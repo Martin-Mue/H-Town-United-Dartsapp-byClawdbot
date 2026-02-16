@@ -195,6 +195,25 @@ export function MatchLivePage() {
     return [];
   }, [active, isCricket]);
 
+
+  const quickTurnPresets = [26, 41, 45, 60, 81, 85, 95, 100, 121, 140, 180];
+
+  const turnProjection = useMemo(() => {
+    if (!state || isCricket || !active) return null;
+    const turnPoints = quickEntryMode
+      ? Math.max(0, Math.min(180, Number(quickTurnPoints || 0)))
+      : pendingX01.reduce((sum, dart) => sum + dart.points, 0);
+
+    const projected = active.score - turnPoints;
+    const bust = projected < 0;
+    return {
+      turnPoints,
+      projected,
+      bust,
+      checkoutNow: projected === 0,
+    };
+  }, [state, isCricket, active, quickEntryMode, quickTurnPoints, pendingX01]);
+
   useEffect(() => {
     if (!state) return;
     const snapshot = state.scoreboard.map((s) => `${s.playerId}:${s.legs}`).join('|');
@@ -386,7 +405,7 @@ export function MatchLivePage() {
       setState(nextState);
       setPlayerTurnScores(updatedTurnScores);
       setTurnCounter((t) => t + 1);
-      setDartCounter((d) => d + (isCricket ? pendingCricket.length : pendingX01.length));
+      setDartCounter((d) => d + (isCricket ? pendingCricket.length : quickEntryMode ? 3 : pendingX01.length));
       clearTurn();
       if (quickEntryMode) setQuickTurnPoints('');
 
@@ -546,6 +565,17 @@ export function MatchLivePage() {
         </div>
       )}
 
+      {!isCricket && turnProjection && (
+        <div className="w-full max-w-xl rounded-lg border soft-border bg-slate-900/60 p-2 text-xs">
+          <p className="muted-text">Turn-Vorschau</p>
+          <p>
+            Eingabe: <span className="primary-text font-semibold">{turnProjection.turnPoints}</span> ·
+            Rest nach Turn: <span className={`font-semibold ${turnProjection.bust ? 'text-red-300' : 'primary-text'}`}> {turnProjection.projected}</span>
+            {turnProjection.bust ? ' (Bust)' : turnProjection.checkoutNow ? ' (Checkout möglich)' : ''}
+          </p>
+        </div>
+      )}
+
       <div className="w-full max-w-xl rounded-2xl border soft-border card-bg p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm uppercase">Wurf Eingabe</h3>
@@ -636,13 +666,25 @@ export function MatchLivePage() {
             <div className="rounded border soft-border bg-slate-900/60 p-2 space-y-2">
               <p className="text-[11px] muted-text">{quickEntryMode ? 'Gesamtergebnis-Input aktiv. Einzel-Darts sind ausgeblendet.' : 'Einzel-Dart-Input aktiv. Für Gesamt-Input oben umschalten.'}</p>
               {quickEntryMode && (
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <input value={quickTurnPoints} onChange={(e) => setQuickTurnPoints(e.target.value)} type="number" min={0} max={180} className="rounded bg-slate-800 p-2" placeholder="Gesamtergebnis (0-180)" />
-                  <select value={quickFinalMultiplier} onChange={(e) => setQuickFinalMultiplier(Number(e.target.value) as 1 | 2 | 3)} className="rounded bg-slate-800 p-2">
-                    <option value={1}>Final Dart Single</option>
-                    <option value={2}>Final Dart Double</option>
-                    <option value={3}>Final Dart Triple</option>
-                  </select>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <input value={quickTurnPoints} onChange={(e) => setQuickTurnPoints(e.target.value)} type="number" min={0} max={180} className="rounded bg-slate-800 p-2" placeholder="Gesamtergebnis (0-180)" />
+                    <select value={quickFinalMultiplier} onChange={(e) => setQuickFinalMultiplier(Number(e.target.value) as 1 | 2 | 3)} className="rounded bg-slate-800 p-2">
+                      <option value={1}>Final Dart Single</option>
+                      <option value={2}>Final Dart Double</option>
+                      <option value={3}>Final Dart Triple</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-[11px] muted-text mb-1">Schnellwerte</p>
+                    <div className="flex flex-wrap gap-1">
+                      {quickTurnPresets.map((preset) => (
+                        <button key={`preset-${preset}`} onClick={() => setQuickTurnPoints(String(preset))} className="rounded bg-slate-800 px-2 py-1 text-[11px]">
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
