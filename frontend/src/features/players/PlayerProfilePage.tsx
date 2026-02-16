@@ -74,9 +74,7 @@ export function PlayerProfilePage() {
   const trend = useMemo(() => {
     if (!player) return [42, 46, 49, 53, 55];
 
-    const sorted = [...recentMatches]
-      .filter((m) => m.players.some((p) => p.id === player.id || p.name === player.displayName))
-      .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
+    const sorted = [...filteredMatches].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
 
     const values = sorted.map((match) => {
       const turns = match.playerTurnScores?.[player.id] ?? [];
@@ -101,15 +99,22 @@ export function PlayerProfilePage() {
     return computePlayerRankingStats([player], elo, recentMatches, tournaments)[0] ?? null;
   }, [player, elo, recentMatches, tournaments]);
 
-  const personalMatches = recentMatches.filter((m) => m.players.some((p) => p.id === player?.id || p.name === player?.displayName));
+  const personalMatches = recentMatches
+    .filter((m) => m.players.some((p) => p.id === player?.id || p.name === player?.displayName))
+    .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+
+  const filteredMatches = useMemo(() => {
+    if (trendWindow === 'all') return personalMatches;
+    return personalMatches.slice(0, Number(trendWindow));
+  }, [personalMatches, trendWindow]);
 
 
   const personalScoringDistribution = useMemo(() => {
     if (!player) return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: 0 }));
-    const turns = personalMatches.flatMap((m) => m.playerTurnScores?.[player.id] ?? []);
+    const turns = filteredMatches.flatMap((m) => m.playerTurnScores?.[player.id] ?? []);
     const countAtLeast = (threshold: number) => turns.filter((value) => value >= threshold).length;
     return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: countAtLeast(bucket) }));
-  }, [personalMatches, player]);
+  }, [filteredMatches, player]);
 
   const heatLabels = ['45+', '60+', '80+', '100+', '120+', '140+', '160+', '180'];
   const heat = useMemo(() => {
@@ -136,14 +141,17 @@ export function PlayerProfilePage() {
         </div>
 
         {!isEditingBio ? (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <Stat title="Spitzname" value={String(player.nickname ?? '—')} />
-            <Stat title="Wurfarm" value={String(player.throwingArm === 'LEFT' ? 'Links' : player.throwingArm === 'BOTH' ? 'Beidseitig' : player.throwingArm ? 'Rechts' : '—')} />
-            <Stat title="Gripart" value={String(player.gripStyle ?? '—')} />
-            <Stat title="Dartgewicht" value={player.dartWeightGrams ? `${player.dartWeightGrams} g` : '—'} />
-            <Stat title="Gespielte Saisons" value={String(player.seasonsPlayed ?? 0)} />
-            <Stat title="Ansage" value={player.introAnnouncementEnabled ? 'AN' : 'AUS'} />
-          </div>
+          <>
+            <p className="text-xs muted-text mb-2">Zeitraumfilter wirkt auf Scoring, Heatmap und Matchliste.</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <Stat title="Spitzname" value={String(player.nickname ?? '—')} />
+              <Stat title="Wurfarm" value={String(player.throwingArm === 'LEFT' ? 'Links' : player.throwingArm === 'BOTH' ? 'Beidseitig' : player.throwingArm ? 'Rechts' : '—')} />
+              <Stat title="Gripart" value={String(player.gripStyle ?? '—')} />
+              <Stat title="Dartgewicht" value={player.dartWeightGrams ? `${player.dartWeightGrams} g` : '—'} />
+              <Stat title="Gespielte Saisons" value={String(player.seasonsPlayed ?? 0)} />
+              <Stat title="Ansage" value={player.introAnnouncementEnabled ? 'AN' : 'AUS'} />
+            </div>
+          </>
         ) : (
           <div className="space-y-2 text-xs">
             <input value={bioDraft.nickname} onChange={(e) => setBioDraft((d) => ({ ...d, nickname: e.target.value }))} placeholder="Spitzname" className="w-full rounded bg-slate-800 p-2" />
@@ -224,7 +232,8 @@ export function PlayerProfilePage() {
 
 
       <div className="rounded-2xl card-bg border soft-border p-4">
-        <h3 className="text-sm uppercase mb-2">Scoring-Klassen (Match, persistent)</h3>
+        <h3 className="text-sm uppercase mb-2">Scoring-Klassen (nach Filter)</h3>
+        <p className="text-xs muted-text mb-2">Zeitraumfilter wirkt auf Scoring, Heatmap und Matchliste.</p>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {personalScoringDistribution.map((row) => (
             <div key={row.bucket} className="rounded bg-slate-800 p-2 flex items-center justify-between">
@@ -263,14 +272,14 @@ export function PlayerProfilePage() {
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Gespielte Spiele & Ergebnisse</h3>
         <div className="space-y-2 text-xs">
-          {personalMatches.map((m) => (
+          {filteredMatches.map((m) => (
             <div key={m.id} className="rounded bg-slate-800 p-2">
               <p>{m.players.map((p) => p.name).join(' vs ')} · {m.mode.replace('_', ' ')}</p>
               <p className="muted-text mt-1">{new Date(m.playedAt).toLocaleString('de-DE')} · {m.resultLabel}</p>
               <p className="primary-text mt-1">Sieger: {m.winnerName ?? m.winnerPlayerId ?? '—'}</p>
             </div>
           ))}
-          {personalMatches.length === 0 && <p className="muted-text">Noch keine Matches in der Historie.</p>}
+          {filteredMatches.length === 0 && <p className="muted-text">Keine Matches für den gewählten Filter.</p>}
         </div>
       </div>
 
