@@ -50,6 +50,13 @@ export function TournamentsPage() {
     matches: round.fixtures,
   }));
 
+  const participantsDraft = useMemo(() => [...selectedMembers, ...guestPlayers], [selectedMembers, guestPlayers]);
+
+  const tournamentPreview = useMemo(() =>
+    buildTournamentPreview(participantsDraft, format, ['X01_501', 'X01_501', 'X01_501'], byePlacement),
+    [participantsDraft, format, byePlacement],
+  );
+
   const refresh = async () => {
     try {
       setErrorMessage(null);
@@ -80,16 +87,21 @@ export function TournamentsPage() {
     const participants = [...selectedMembers, ...guestPlayers];
     if (participants.length < 2) return setErrorMessage('Mindestens 2 Teilnehmer angeben.');
 
-    const created = await tournamentApiClient.createTournament({
-      name: name.trim() || 'H-Town Cup',
-      format,
-      participants,
-      roundModes: ['X01_501', 'X01_501', 'X01_501'],
-      settings: { byePlacement, seedingMode, defaultLegsPerSet, defaultSetsToWin, allowRoundModeSwitch },
-    });
+    try {
+      setErrorMessage(null);
+      const created = await tournamentApiClient.createTournament({
+        name: name.trim() || 'H-Town Cup',
+        format,
+        participants,
+        roundModes: ['X01_501', 'X01_501', 'X01_501'],
+        settings: { byePlacement, seedingMode, defaultLegsPerSet, defaultSetsToWin, allowRoundModeSwitch },
+      });
 
-    await refresh();
-    setSelectedTournamentId(created.tournamentId);
+      await refresh();
+      setSelectedTournamentId(created.tournamentId);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Turnier konnte nicht erstellt werden.');
+    }
   };
 
   const setRoundMode = async (roundNumber: number, mode: RoundMode) => {
@@ -192,6 +204,32 @@ export function TournamentsPage() {
         </div>
         <div className="flex flex-wrap gap-2">{guestPlayers.map((g) => <span key={g} className="rounded-full bg-amber-900/40 px-3 py-1 text-xs text-amber-200">{g}</span>)}</div>
 
+        <div className="rounded-xl border soft-border bg-slate-900/50 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase muted-text">Turnier-Vorschau vor Erstellung</p>
+            <p className="text-[11px] muted-text">Teilnehmer: {participantsDraft.length}</p>
+          </div>
+          {byePlacement === 'PLAY_IN' && format === 'SINGLE_ELIMINATION' && (
+            <p className="text-[11px] text-amber-200">Play-In aktiv: direkte Qualifikanten spielen gegen BYE, übrige Teilnehmer in Quali-Duellen.</p>
+          )}
+          {tournamentPreview.length === 0 ? (
+            <p className="text-xs muted-text">Mindestens 2 Teilnehmer für die Vorschau wählen.</p>
+          ) : (
+            <div className="space-y-2">
+              {tournamentPreview.map((round) => (
+                <div key={`preview-${round.roundNumber}`} className="rounded bg-slate-800/70 p-2">
+                  <p className="text-[11px] uppercase mb-1">Round {round.roundNumber} · {round.mode.replace('_', ' ')}</p>
+                  <div className="space-y-1">
+                    {round.matches.map((match, idx) => (
+                      <p key={`p-${round.roundNumber}-${idx}`} className="text-[11px] muted-text">{match.homePlayerId} vs {match.awayPlayerId}</p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button onClick={createTournament} className="w-full rounded-xl bg-sky-400 p-2 text-sm font-semibold text-slate-900">Turnier erstellen</button>
       </div>
 
@@ -236,4 +274,90 @@ export function TournamentsPage() {
       {errorMessage && <p className="rounded-xl bg-amber-900/40 p-3 text-xs text-amber-100">{errorMessage}</p>}
     </section>
   );
+}
+
+
+function buildTournamentPreview(
+  participants: string[],
+  format: TournamentFormat,
+  roundModes: RoundMode[],
+  byePlacement: ByePlacement,
+): TournamentRound[] {
+  if (participants.length < 2) return [];
+
+  if (format === 'ROUND_ROBIN') {
+    const fixtures: Array<{ homePlayerId: string; awayPlayerId: string }> = [];
+    for (let i = 0; i < participants.length; i += 1) {
+      for (let j = i + 1; j < participants.length; j += 1) {
+        fixtures.push({ homePlayerId: participants[i], awayPlayerId: participants[j] });
+      }
+    }
+    return [{ roundNumber: 1, mode: roundModes[0] ?? 'X01_501', matches: fixtures }];
+  }
+
+  const seeded = byePlacement === 'PLAY_IN'
+    ? buildPlayInSeed(participants)
+    : buildClassicSeed(participants, byePlacement);
+
+  const rounds: TournamentRound[] = [];
+  let currentSize = seeded.length;
+  let roundNumber = 1;
+  while (currentSize >= 2) {
+    const fixtureCount = currentSize / 2;
+    rounds.push({
+      roundNumber,
+      mode: roundModes[roundNumber - 1] ?? 'X01_501',
+      matches: Array.from({ length: fixtureCount }, (_, index) => ({
+        homePlayerId: roundNumber === 1 ? seeded[index * 2] ?? 'TBD' : 'TBD',
+        awayPlayerId: roundNumber === 1 ? seeded[index * 2 + 1] ?? 'TBD' : 'TBD',
+      })),
+    });
+    currentSize = fixtureCount;
+    roundNumber += 1;
+  }
+
+  return rounds;
+}
+
+function buildPlayInSeed(participants: string[]): string[] {
+  const n = participants.length;
+  const lowerPower = 2 ** Math.floor(Math.log2(Math.max(2, n)));
+  if (n <= lowerPower) return buildClassicSeed(participants, 'ROUND_1');
+
+  const playInMatchCount = n - lowerPower;
+  const directCount = n - playInMatchCount * 2;
+  const directPlayers = participants.slice(0, directCount);
+  const playInPlayers = participants.slice(directCount);
+
+  const seeded: string[] = [];
+  for (const player of directPlayers) seeded.push(player, 'BYE');
+  for (let i = 0; i < playInMatchCount; i += 1) seeded.push(playInPlayers[i * 2] ?? 'BYE', playInPlayers[i * 2 + 1] ?? 'BYE');
+  return seeded;
+}
+
+function buildClassicSeed(participants: string[], byePlacement: ByePlacement): string[] {
+  const targetSize = Math.max(2, 2 ** Math.ceil(Math.log2(Math.max(2, participants.length))));
+  const byeCount = targetSize - participants.length;
+  if (byeCount <= 0) return participants;
+
+  if (byePlacement === 'DISTRIBUTED') {
+    const result: string[] = [];
+    const slots = participants.length + byeCount;
+    const byeEvery = Math.max(2, Math.floor(slots / byeCount));
+    let p = 0;
+    let b = 0;
+    for (let i = 0; i < slots; i += 1) {
+      const shouldBye = b < byeCount && (i % byeEvery === 1 || p >= participants.length);
+      if (shouldBye) {
+        result.push('BYE');
+        b += 1;
+      } else {
+        result.push(participants[p] ?? 'BYE');
+        p += 1;
+      }
+    }
+    return result;
+  }
+
+  return [...participants, ...Array.from({ length: byeCount }, () => 'BYE')];
 }
