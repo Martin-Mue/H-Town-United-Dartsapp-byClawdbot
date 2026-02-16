@@ -71,6 +71,16 @@ export function PlayerProfilePage() {
     void load();
   }, []);
 
+  const personalMatches = recentMatches
+    .filter((m) => m.players.some((p) => p.id === player?.id || p.name === player?.displayName))
+    .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+
+  const filteredMatches = useMemo(() => {
+    if (trendWindow === 'all') return personalMatches;
+    return personalMatches.slice(0, Number(trendWindow));
+  }, [personalMatches, trendWindow]);
+
+
   const trend = useMemo(() => {
     if (!player) return [42, 46, 49, 53, 55];
 
@@ -98,16 +108,6 @@ export function PlayerProfilePage() {
     if (!player) return null;
     return computePlayerRankingStats([player], elo, recentMatches, tournaments)[0] ?? null;
   }, [player, elo, recentMatches, tournaments]);
-
-  const personalMatches = recentMatches
-    .filter((m) => m.players.some((p) => p.id === player?.id || p.name === player?.displayName))
-    .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
-
-  const filteredMatches = useMemo(() => {
-    if (trendWindow === 'all') return personalMatches;
-    return personalMatches.slice(0, Number(trendWindow));
-  }, [personalMatches, trendWindow]);
-
 
   const personalScoringDistribution = useMemo(() => {
     if (!player) return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: 0 }));
