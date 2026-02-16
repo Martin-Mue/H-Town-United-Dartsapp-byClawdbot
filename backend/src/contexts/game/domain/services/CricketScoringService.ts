@@ -14,10 +14,11 @@ export class CricketScoringService {
     targetNumber: number;
     multiplier: 1 | 2 | 3;
   }): { awardedPoints: number; playerClosedBoard: boolean } {
+    const effectiveMultiplier: 1 | 2 | 3 = input.targetNumber === 25 && input.multiplier === 3 ? 2 : input.multiplier;
     const beforeMarks = this.boardState.getMarks(input.playerId, input.targetNumber);
-    this.boardState.applyMark(input.playerId, input.targetNumber, input.multiplier);
+    this.boardState.applyMark(input.playerId, input.targetNumber, effectiveMultiplier);
 
-    const overflowMarks = Math.max(0, beforeMarks + input.multiplier - 3);
+    const overflowMarks = Math.max(0, beforeMarks + effectiveMultiplier - 3);
     const allOpponentsClosed = input.opponentIds.every((id) => this.boardState.getMarks(id, input.targetNumber) >= 3);
     const awardedPoints = allOpponentsClosed ? 0 : overflowMarks * input.targetNumber;
 

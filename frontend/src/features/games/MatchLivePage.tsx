@@ -59,6 +59,7 @@ export function MatchLivePage() {
   const [quickFinalMultiplier, setQuickFinalMultiplier] = useState<1 | 2 | 3>(2);
   const [legStarterPlayerId, setLegStarterPlayerId] = useState<string | null>(null);
   const [lastLegSnapshot, setLastLegSnapshot] = useState('');
+  const [showPreMatchTips, setShowPreMatchTips] = useState(false);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -239,15 +240,17 @@ export function MatchLivePage() {
 
   const addDartToTurn = () => {
     if (pendingX01.length >= 3) return;
-    const points = Math.min(60, selected === 50 ? 50 : selected * multiplier);
-    const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${multiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${multiplier}`;
-    setPendingX01((prev) => [...prev, { points, multiplier, label }]);
+    const effectiveMultiplier: 1 | 2 | 3 = selected === 50 ? 1 : selected === 25 ? (multiplier === 3 ? 2 : multiplier) : multiplier;
+    const points = Math.min(60, selected === 50 ? 50 : selected * effectiveMultiplier);
+    const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${effectiveMultiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${effectiveMultiplier}`;
+    setPendingX01((prev) => [...prev, { points, multiplier: effectiveMultiplier, label }]);
     setErrorMessage(null);
   };
 
   const addCricketThrowToTurn = () => {
     if (pendingCricket.length >= 3) return;
-    setPendingCricket((prev) => [...prev, { targetNumber: cricketTarget, multiplier }]);
+    const effectiveMultiplier: 1 | 2 | 3 = cricketTarget === 25 && multiplier === 3 ? 2 : multiplier;
+    setPendingCricket((prev) => [...prev, { targetNumber: cricketTarget, multiplier: effectiveMultiplier }]);
     setErrorMessage(null);
   };
 
@@ -434,16 +437,36 @@ export function MatchLivePage() {
           </div>
         )}
 
-        <div className="space-y-3">
-          {preMatchInsights?.tips.map((entry) => (
-            <article key={entry.playerId} className="rounded-2xl card-bg border soft-border p-4">
-              <h4 className="text-sm uppercase mb-2">Gameplan · {entry.displayName}</h4>
-              <ul className="space-y-1 text-xs list-disc pl-4">
-                {entry.tipList.map((tip) => <li key={tip}>{tip}</li>)}
-              </ul>
-            </article>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {state.players.map((p) => {
+            const profile = localPlayers.find((lp) => lp.id === p.playerId || lp.displayName.toLowerCase() === p.displayName.toLowerCase());
+            return (
+              <article key={p.playerId} className="rounded-2xl card-bg border soft-border p-4">
+                <h4 className="text-sm uppercase mb-2">{p.displayName}</h4>
+                <p className="text-xs muted-text">Ø {Math.round((profile?.currentAverage ?? p.average) * 10) / 10}</p>
+                <p className="text-xs muted-text">Checkout {Math.round((profile?.checkoutPercentage ?? p.checkoutPercentage) * 10) / 10}%</p>
+                <p className="text-xs muted-text">Pressure {profile?.pressurePerformanceIndex ?? 50}/100</p>
+              </article>
+            );
+          })}
         </div>
+
+        <button onClick={() => setShowPreMatchTips((v) => !v)} className="w-full rounded-xl bg-slate-800 p-2 text-xs text-left">
+          Tipps {showPreMatchTips ? 'ausblenden' : 'einblenden'}
+        </button>
+
+        {showPreMatchTips && (
+          <div className="space-y-3">
+            {preMatchInsights?.tips.map((entry) => (
+              <article key={entry.playerId} className="rounded-2xl card-bg border soft-border p-4">
+                <h4 className="text-sm uppercase mb-2">Gameplan · {entry.displayName}</h4>
+                <ul className="space-y-1 text-xs list-disc pl-4">
+                  {entry.tipList.map((tip) => <li key={tip}>{tip}</li>)}
+                </ul>
+              </article>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => {
@@ -535,11 +558,14 @@ export function MatchLivePage() {
         {cameraHint && <p className="text-[11px] muted-text">{cameraHint}</p>}
 
         <div className="grid grid-cols-3 gap-2">
-          {[1, 2, 3].map((v) => (
-            <button key={v} onClick={() => setMultiplier(v as 1 | 2 | 3)} className={`rounded-lg p-2 text-sm ${multiplier === v ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
-              {v === 1 ? 'Single' : v === 2 ? 'Double' : 'Triple'}
-            </button>
-          ))}
+          {[1, 2, 3].map((v) => {
+            const tripleBlocked = (selected === 25 || cricketTarget === 25) && v === 3;
+            return (
+              <button key={v} onClick={() => !tripleBlocked && setMultiplier(v as 1 | 2 | 3)} disabled={tripleBlocked} className={`rounded-lg p-2 text-sm ${multiplier === v ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'} disabled:opacity-40`}>
+                {v === 1 ? 'Single' : v === 2 ? 'Double' : 'Triple'}
+              </button>
+            );
+          })}
         </div>
 
         {isCricket ? (

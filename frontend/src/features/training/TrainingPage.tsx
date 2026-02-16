@@ -211,7 +211,8 @@ export function TrainingPage() {
 
   const addTrainingDart = () => {
     if (trainingThrows.length >= 120 || !selectedDrill) return;
-    const forcedMultiplier = selectedDrill.id === 'doubles' ? 2 : trainingMultiplier;
+    const baseMultiplier = selectedDrill.id === 'doubles' ? 2 : trainingMultiplier;
+    const forcedMultiplier = trainingSegment === 25 && baseMultiplier === 3 ? 2 : trainingSegment === 50 ? 1 : baseMultiplier;
     const points = trainingSegment === 50 ? 50 : Math.min(60, trainingSegment * forcedMultiplier);
 
     const hitClockTarget = trainingTarget === 25
@@ -324,11 +325,14 @@ export function TrainingPage() {
             {cameraHint && <p className="text-[11px] muted-text">{cameraHint}</p>}
 
             <div className="grid grid-cols-3 gap-1">
-              {[1, 2, 3].map((v) => (
-                <button key={v} onClick={() => setTrainingMultiplier(v as 1 | 2 | 3)} className={`rounded p-1 text-xs ${trainingMultiplier === v ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}>
-                  {v === 1 ? 'Single' : v === 2 ? 'Double' : 'Triple'}
-                </button>
-              ))}
+              {[1, 2, 3].map((v) => {
+                const tripleBlocked = (trainingSegment === 25 || trainingSegment === 50) && v === 3;
+                return (
+                  <button key={v} onClick={() => !tripleBlocked && setTrainingMultiplier(v as 1 | 2 | 3)} disabled={tripleBlocked} className={`rounded p-1 text-xs ${trainingMultiplier === v ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'} disabled:opacity-40`}>
+                    {v === 1 ? 'Single' : v === 2 ? 'Double' : 'Triple'}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-7 gap-1">
