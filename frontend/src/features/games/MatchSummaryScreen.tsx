@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Trophy, BarChart3, Download } from 'lucide-react';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 
@@ -15,6 +15,12 @@ type HistoryEntry = {
 
 /** Post-game summary styled after h-town-united stats mindset with export + trend sections. */
 export function MatchSummaryScreen() {
+  const location = useLocation();
+  const backTarget = useMemo(() => {
+    const query = new URLSearchParams(location.search);
+    return query.get('back') === 'tournaments' ? '/tournaments' : '/statistics';
+  }, [location.search]);
+
   const lastMatch = useMemo<HistoryEntry | null>(() => {
     try {
       const raw = window.localStorage.getItem('htown-match-history');
@@ -75,7 +81,7 @@ export function MatchSummaryScreen() {
         <button onClick={exportSummary} className="rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2">
           <Download size={14} /> Export Report
         </button>
-        <Link to="/statistics" className="rounded-xl bg-slate-800 p-3 text-center">Zu Statistiken</Link>
+        <Link to={backTarget} className="rounded-xl bg-slate-800 p-3 text-center">{backTarget === '/tournaments' ? 'Zurück zum Turnier' : 'Zu Statistiken'}</Link>
       </div>
     </section>
   );

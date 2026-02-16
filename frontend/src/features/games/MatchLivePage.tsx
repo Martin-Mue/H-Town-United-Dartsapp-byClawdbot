@@ -394,7 +394,7 @@ export function MatchLivePage() {
       if (nextState.winnerPlayerId) {
         saveHistory(nextState, updatedTurnScores);
         await syncTournamentResultIfNeeded(nextState);
-        navigate(tournamentId ? '/tournaments' : '/match-summary');
+        navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
       }
     } finally {
       setSubmitting(false);
@@ -415,7 +415,7 @@ export function MatchLivePage() {
     setState(next);
     saveHistory(next, playerTurnScores);
     await syncTournamentResultIfNeeded(next);
-    navigate(tournamentId ? '/tournaments' : '/match-summary');
+    navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
   };
 
 
@@ -490,6 +490,29 @@ export function MatchLivePage() {
           );
         })}
       </div>
+
+
+      {isCricket && state.players.length >= 2 && (
+        <div className="w-full max-w-xl rounded-2xl border soft-border card-bg p-3">
+          <p className="text-xs uppercase muted-text mb-2">Cricket Board</p>
+          <div className="grid grid-cols-[56px_1fr_1fr] gap-1 text-[11px] items-center">
+            <div className="muted-text">Zahl</div>
+            <div className="muted-text text-center">{state.players[0].displayName}</div>
+            <div className="muted-text text-center">{state.players[1].displayName}</div>
+            {[20,19,18,17,16,15,25].map((n) => {
+              const a = n === 25 ? state.players[0].cricketMarks.bull : state.players[0].cricketMarks[`m${n}` as keyof typeof state.players[0]['cricketMarks']];
+              const b = n === 25 ? state.players[1].cricketMarks.bull : state.players[1].cricketMarks[`m${n}` as keyof typeof state.players[1]['cricketMarks']];
+              return (
+                <div key={`row-${n}`} className="contents">
+                  <div className="rounded bg-slate-800 p-1 text-center">{n === 25 ? 'Bull' : n}</div>
+                  <div className={`rounded p-1 text-center ${Number(a) >= 3 ? 'bg-emerald-900/40 text-emerald-200' : 'bg-slate-800'}`}>{Number(a)}/3</div>
+                  <div className={`rounded p-1 text-center ${Number(b) >= 3 ? 'bg-emerald-900/40 text-emerald-200' : 'bg-slate-800'}`}>{Number(b)}/3</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="primary-text text-sm font-semibold">{active?.displayName} wirft (3 Darts)</p>
       {leadInfo && (
