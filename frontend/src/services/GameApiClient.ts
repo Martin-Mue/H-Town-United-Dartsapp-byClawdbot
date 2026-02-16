@@ -82,6 +82,20 @@ export class GameApiClient {
     return response.json();
   }
 
+  /** Registers up to 3 cricket darts as one visit for the active player. */
+  public async registerCricketVisit(
+    matchId: string,
+    payload: { throws: Array<{ targetNumber: 15 | 16 | 17 | 18 | 19 | 20 | 25; multiplier: 1 | 2 | 3 }> },
+  ): Promise<MatchStateDto> {
+    const response = await fetch(`${this.baseUrl}/api/game/matches/${matchId}/turns/cricket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to register cricket visit.');
+    return response.json();
+  }
+
 
 
   public async detectThrowWithCamera(payload: { matchId: string; suggestedPoints: number; suggestedMultiplier: 1 | 2 | 3 }): Promise<{

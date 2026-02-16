@@ -361,11 +361,7 @@ export function MatchLivePage() {
         }
 
         turnScoreForStats = pendingCricket.reduce((sum, item) => sum + Math.min(60, item.targetNumber * item.multiplier), 0);
-
-        for (const throwItem of pendingCricket) {
-          nextState = await apiClient.registerCricketTurn(nextState.matchId, throwItem);
-          if (nextState.winnerPlayerId) break;
-        }
+        nextState = await apiClient.registerCricketVisit(nextState.matchId, { throws: pendingCricket });
       } else {
         if (!quickEntryMode && pendingX01.length === 0) {
           setErrorMessage('Bitte bis zu 3 Darts hinzufügen.');

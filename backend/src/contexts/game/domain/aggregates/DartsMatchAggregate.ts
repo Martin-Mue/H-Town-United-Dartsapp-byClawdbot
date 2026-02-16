@@ -99,8 +99,8 @@ export class DartsMatchAggregate extends AggregateRoot {
     this.moveToNextPlayer();
   }
 
-  /** Applies a cricket throw and resolves scoring, closure, and match winner rules. */
-  public registerCricketTurn(targetNumber: number, multiplier: 1 | 2 | 3): void {
+  /** Applies one full cricket visit (up to 3 darts) for the active player. */
+  public registerCricketVisit(throws: Array<{ targetNumber: number; multiplier: 1 | 2 | 3 }>): void {
     if (this.winnerPlayerId) return;
     if (this.configuration.mode !== 'CRICKET') return;
 
@@ -108,24 +108,31 @@ export class DartsMatchAggregate extends AggregateRoot {
     const service = new CricketScoringService(this.cricketBoardState);
     const opponents = this.playerOrder.filter((id) => id !== player.playerId);
 
-    const result = service.applyThrow({
-      playerId: player.playerId,
-      opponentIds: opponents,
-      targetNumber,
-      multiplier,
-    });
+    for (const throwItem of throws.slice(0, 3)) {
+      const result = service.applyThrow({
+        playerId: player.playerId,
+        opponentIds: opponents,
+        targetNumber: throwItem.targetNumber,
+        multiplier: throwItem.multiplier,
+      });
 
-    this.cricketScores.set(player.playerId, (this.cricketScores.get(player.playerId) ?? 0) + result.awardedPoints);
+      this.cricketScores.set(player.playerId, (this.cricketScores.get(player.playerId) ?? 0) + result.awardedPoints);
 
-    const playerScore = this.getCricketScore(player.playerId);
-    const topOpponentScore = Math.max(...opponents.map((id) => this.getCricketScore(id)));
-    if (result.playerClosedBoard && playerScore >= topOpponentScore) {
-      this.winnerPlayerId = player.playerId;
-      this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
-      return;
+      const playerScore = this.getCricketScore(player.playerId);
+      const topOpponentScore = Math.max(...opponents.map((id) => this.getCricketScore(id)));
+      if (result.playerClosedBoard && playerScore >= topOpponentScore) {
+        this.winnerPlayerId = player.playerId;
+        this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
+        return;
+      }
     }
 
     this.moveToNextPlayer();
+  }
+
+  /** Backward-compatible single-throw cricket entry. */
+  public registerCricketTurn(targetNumber: number, multiplier: 1 | 2 | 3): void {
+    this.registerCricketVisit([{ targetNumber, multiplier }]);
   }
 
   /** Returns winner id when match has reached terminal state. */

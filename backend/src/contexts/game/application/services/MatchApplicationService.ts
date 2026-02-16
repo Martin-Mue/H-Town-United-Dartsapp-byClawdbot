@@ -61,23 +61,34 @@ export class MatchApplicationService {
     return this.toStateDto(match);
   }
 
-  /** Registers one cricket throw and emits resulting domain events. */
-  public async registerCricketTurn(request: {
+  /** Registers one full cricket visit (up to 3 darts) and emits resulting domain events. */
+  public async registerCricketVisit(request: {
     matchId: string;
-    targetNumber: number;
-    multiplier: 1 | 2 | 3;
+    throws: Array<{ targetNumber: number; multiplier: 1 | 2 | 3 }>;
   }): Promise<MatchStateDto> {
     const match = await this.matchRepository.findById(request.matchId);
     if (!match) throw new Error('Match was not found.');
 
     const previousWinner = match.getWinnerPlayerId();
-    match.registerCricketTurn(request.targetNumber, request.multiplier);
+    match.registerCricketVisit(request.throws);
     this.applyEloIfMatchCompleted(match, previousWinner);
 
     await this.matchRepository.save(match);
     await this.eventBus.publish(match.pullDomainEvents());
 
     return this.toStateDto(match);
+  }
+
+  /** Backward-compatible single throw route. */
+  public async registerCricketTurn(request: {
+    matchId: string;
+    targetNumber: number;
+    multiplier: 1 | 2 | 3;
+  }): Promise<MatchStateDto> {
+    return this.registerCricketVisit({
+      matchId: request.matchId,
+      throws: [{ targetNumber: request.targetNumber, multiplier: request.multiplier }],
+    });
   }
 
 
