@@ -120,6 +120,8 @@ export function TournamentsPage() {
     if (!selectedTournament) return;
     const fixture = selectedTournament.rounds.find((r) => r.roundNumber === roundNumber)?.fixtures[fixtureIndex];
     if (!fixture) return;
+    if (fixture.linkedMatchId || fixture.winnerPlayerId) return setErrorMessage('Fixture ist bereits verknüpft oder abgeschlossen.');
+    if ([fixture.homePlayerId, fixture.awayPlayerId].some((p) => p === 'BYE' || p === 'TBD')) return setErrorMessage('Fixture ist noch nicht startbereit.');
 
     const home = clubPlayers.find((p) => p.displayName === fixture.homePlayerId);
     const away = clubPlayers.find((p) => p.displayName === fixture.awayPlayerId);

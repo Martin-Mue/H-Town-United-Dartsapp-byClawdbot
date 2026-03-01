@@ -42,6 +42,11 @@ export class TournamentAggregate {
     if (!currentRound) throw new Error('Round was not found.');
     const fixture = currentRound.fixtures[fixtureIndex];
     if (!fixture) throw new Error('Fixture was not found.');
+    if (fixture.linkedMatchId) throw new Error('Fixture already linked to a match.');
+    if (fixture.winnerPlayerId) throw new Error('Fixture already completed.');
+    if ([fixture.homePlayerId, fixture.awayPlayerId].some((p) => p === 'TBD' || p === 'BYE')) {
+      throw new Error('Fixture is not start-ready.');
+    }
     fixture.linkedMatchId = matchId;
     this.touch();
   }
@@ -52,6 +57,22 @@ export class TournamentAggregate {
 
     const fixture = currentRound.fixtures[fixtureIndex];
     if (!fixture) throw new Error('Fixture was not found.');
+    if (fixture.winnerPlayerId) throw new Error('Fixture already has a winner.');
+
+    const participants = [fixture.homePlayerId, fixture.awayPlayerId];
+    const hasBye = participants.includes('BYE');
+    const hasTbd = participants.includes('TBD');
+
+    if (hasTbd) throw new Error('Fixture not ready.');
+
+    if (hasBye) {
+      const isFreilos = resultLabel === 'Freilos';
+      const validByeWinner = participants.includes(winnerPlayerId) && winnerPlayerId !== 'BYE';
+      if (!isFreilos || !validByeWinner) throw new Error('BYE fixtures are auto-resolved only.');
+    } else if (!participants.includes(winnerPlayerId)) {
+      throw new Error('Winner must be one of fixture participants.');
+    }
+
     fixture.winnerPlayerId = winnerPlayerId;
     fixture.resultLabel = resultLabel;
 

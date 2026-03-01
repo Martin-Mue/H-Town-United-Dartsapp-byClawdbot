@@ -50,6 +50,7 @@ export function TournamentBracket({
               <div style={{ marginTop: `${matchMarginTop}px`, display: 'flex', flexDirection: 'column', gap: `${columnGapPx}px` }}>
               {paddedMatches.map((match, fixtureIndex) => {
                 const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
+                const canStart = playable && !match.linkedMatchId && !match.winnerPlayerId;
                 return (
                   <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative h-[148px] rounded-xl border soft-border card-bg p-3 flex flex-col justify-between">
                     <div className="space-y-1 text-xs">
@@ -79,7 +80,7 @@ export function TournamentBracket({
                             {match.awayPlayerId}
                           </button>
                         </div>
-                        {playable && (
+                        {canStart && (
                           <button onClick={() => onStartMatch(round.roundNumber, fixtureIndex)} className="mt-2 w-full rounded bg-sky-400 p-1.5 text-[11px] font-semibold text-slate-900">
                             Match starten
                           </button>
