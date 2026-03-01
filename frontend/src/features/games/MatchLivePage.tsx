@@ -19,6 +19,16 @@ type HistoryEntry = {
   resultLabel: string;
   playerTurnScores?: Record<string, number[]>;
   legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number; dartsUsedByWinner: number; turnsByWinner: number }>;
+  playerMatchStats?: Array<{
+    playerId: string;
+    displayName: string;
+    first9Average: number;
+    matchAverage: number;
+    checkoutAttempts: number;
+    successfulCheckouts: number;
+    bestLegDarts: number | null;
+    worstLegDarts: number | null;
+  }>;
 };
 
 type ManagedPlayer = {
@@ -303,6 +313,30 @@ export function MatchLivePage() {
       ? `${winnerScore.sets}:${loserScore.sets} Sets · ${winnerScore.legs}:${loserScore.legs} Legs`
       : 'Match abgeschlossen';
 
+    const turnScores = turnScoresOverride ?? playerTurnScores;
+    const playerMatchStats = next.players.map((p) => {
+      const turns = turnScores[p.playerId] ?? [];
+      const first9 = turns.slice(0, 3);
+      const first9Average = first9.length > 0 ? Number((first9.reduce((a, b) => a + b, 0) / first9.length).toFixed(1)) : 0;
+      const matchAverage = turns.length > 0 ? Number((turns.reduce((a, b) => a + b, 0) / turns.length).toFixed(1)) : Number(p.average.toFixed(1));
+
+      const legDartsWon = (next.legResults ?? [])
+        .filter((l) => l.winnerPlayerId === p.playerId)
+        .map((l) => l.dartsUsedByWinner)
+        .filter((v) => v > 0);
+
+      return {
+        playerId: p.playerId,
+        displayName: p.displayName,
+        first9Average,
+        matchAverage,
+        checkoutAttempts: Math.max(0, Math.round((p.checkoutPercentage > 0 ? 100 / p.checkoutPercentage : 0) * (p.checkoutPercentage > 0 ? 1 : 0))),
+        successfulCheckouts: p.checkoutPercentage > 0 ? 1 : 0,
+        bestLegDarts: legDartsWon.length > 0 ? Math.min(...legDartsWon) : null,
+        worstLegDarts: legDartsWon.length > 0 ? Math.max(...legDartsWon) : null,
+      };
+    });
+
     const entry: HistoryEntry = {
       id: next.matchId,
       playedAt: new Date().toISOString(),
@@ -311,8 +345,9 @@ export function MatchLivePage() {
       winnerPlayerId: next.winnerPlayerId,
       winnerName: winner?.displayName ?? null,
       resultLabel,
-      playerTurnScores: turnScoresOverride ?? playerTurnScores,
+      playerTurnScores: turnScores,
       legResults: next.legResults,
+      playerMatchStats,
     };
 
     try {

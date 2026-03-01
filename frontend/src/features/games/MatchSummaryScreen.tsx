@@ -12,6 +12,16 @@ type HistoryEntry = {
   winnerName: string | null;
   resultLabel: string;
   legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number; dartsUsedByWinner: number; turnsByWinner: number }>;
+  playerMatchStats?: Array<{
+    playerId: string;
+    displayName: string;
+    first9Average: number;
+    matchAverage: number;
+    checkoutAttempts: number;
+    successfulCheckouts: number;
+    bestLegDarts: number | null;
+    worstLegDarts: number | null;
+  }>;
 };
 
 /** Post-game summary styled after h-town-united stats mindset with export + trend sections. */
@@ -45,6 +55,8 @@ export function MatchSummaryScreen() {
       summary: lastMatch?.resultLabel ?? 'No result data',
       players: lastMatch?.players ?? [],
       mode: lastMatch?.mode ?? 'X01_501',
+      legResults: lastMatch?.legResults ?? [],
+      playerMatchStats: lastMatch?.playerMatchStats ?? [],
       generatedAt: new Date().toISOString(),
     };
 
@@ -83,6 +95,23 @@ export function MatchSummaryScreen() {
                 <span>Leg {leg.legNumber}</span>
                 <span className="primary-text font-semibold">{leg.winnerDisplayName}</span>
                 <span className="muted-text">Sets nach Leg: {leg.setsAfterLeg} · Legs gesamt: {leg.totalLegsWonAfterLeg} · {leg.dartsUsedByWinner} Darts / {leg.turnsByWinner} Turns</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+      {lastMatch?.playerMatchStats && lastMatch.playerMatchStats.length > 0 && (
+        <div className="rounded-2xl card-bg border soft-border p-4">
+          <h3 className="text-sm uppercase mb-2">Matchreport pro Spieler</h3>
+          <div className="space-y-2 text-xs">
+            {lastMatch.playerMatchStats.map((row) => (
+              <div key={`r-${row.playerId}`} className="rounded bg-slate-800 p-2 space-y-1">
+                <p className="font-semibold primary-text">{row.displayName}</p>
+                <p>First-9 Ø: {row.first9Average} · Match Ø: {row.matchAverage}</p>
+                <p>Checkout: {row.successfulCheckouts}/{row.checkoutAttempts}</p>
+                <p>Bestes Leg: {row.bestLegDarts ?? '—'} Darts · Schlechtestes Leg: {row.worstLegDarts ?? '—'} Darts</p>
               </div>
             ))}
           </div>

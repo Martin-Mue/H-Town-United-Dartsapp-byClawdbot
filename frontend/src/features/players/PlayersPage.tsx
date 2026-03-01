@@ -71,9 +71,11 @@ async function generateGenericDartAvatar(displayName: string, seed = 'htown', st
     const response = await fetch(url);
     if (!response.ok) throw new Error('image generation failed');
     const blob = await response.blob();
-    return await blobToDataUrl(blob);
+    const raw = await blobToDataUrl(blob);
+    return await applyLogoOverlay(raw);
   } catch {
-    return buildFallbackAvatar(displayName, style);
+    const fallback = buildFallbackAvatar(displayName, style);
+    return await applyLogoOverlay(fallback);
   }
 }
 
@@ -114,7 +116,7 @@ async function generateProAvatarFromSourceImage(sourceDataUrl: string, style: "R
   ctx.lineWidth = 10;
   ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
 
-  return canvas.toDataURL('image/jpeg', 0.92);
+  return await applyLogoOverlay(canvas.toDataURL('image/jpeg', 0.92));
 }
 
 export function PlayersPage() {
@@ -600,7 +602,36 @@ function previewAnnouncement(name: string, nickname: string, pronunciation: stri
   window.speechSynthesis.speak(utterance);
 }
 
+async function applyLogoOverlay(sourceDataUrl: string): Promise<string> {
+  try {
+    const [base, logo] = await Promise.all([
+      loadImage(sourceDataUrl),
+      loadImage('/branding/h-town-united-logo-tree.jpg'),
+    ]);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = base.width || 512;
+    canvas.height = base.height || 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return sourceDataUrl;
+
+    ctx.drawImage(base, 0, 0, canvas.width, canvas.height);
+    const size = Math.round(Math.min(canvas.width, canvas.height) * 0.62);
+    const x = Math.round((canvas.width - size) / 2);
+    const y = Math.round((canvas.height - size) / 2);
+
+    ctx.globalAlpha = 0.18;
+    ctx.drawImage(logo, x, y, size, size);
+    ctx.globalAlpha = 1;
+
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch {
+    return sourceDataUrl;
+  }
+}
+
 function buildFallbackAvatar(displayName: string, style: 'REALISTIC' | 'COMIC' | 'NEON' = 'COMIC'): string {
+
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
