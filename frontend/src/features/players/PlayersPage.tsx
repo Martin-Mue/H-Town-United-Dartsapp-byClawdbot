@@ -26,6 +26,7 @@ type ManagedPlayer = {
   avatarSourcePhoto?: string;
   avatarKind?: 'GENERIC_AI' | 'PHOTO_STYLIZED';
   avatarStyle?: 'REALISTIC' | 'COMIC' | 'NEON';
+  ownerUserId?: string;
 };
 
 const STORAGE_KEY = 'htown-players';
@@ -125,17 +126,17 @@ export function PlayersPage() {
     if (seedVersion !== SEED_VERSION) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_PLAYERS));
       window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
-      return SEED_PLAYERS;
+      return SEED_PLAYERS.map((p) => ({ ...p, ownerUserId: p.id }));
     }
 
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_PLAYERS));
-      return SEED_PLAYERS;
+      return SEED_PLAYERS.map((p) => ({ ...p, ownerUserId: p.id }));
     }
 
     try {
-      return JSON.parse(raw) as ManagedPlayer[];
+      return (JSON.parse(raw) as ManagedPlayer[]).map((p) => ({ ...p, ownerUserId: p.ownerUserId ?? p.id }));
     } catch {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_PLAYERS));
       return SEED_PLAYERS;
@@ -164,6 +165,19 @@ export function PlayersPage() {
   const [avatarStyleInput, setAvatarStyleInput] = useState<'REALISTIC' | 'COMIC' | 'NEON'>('COMIC');
   const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
 
+  const auth = useMemo(() => {
+    try {
+      const raw = window.localStorage.getItem('htown-auth-context');
+      if (!raw) return { userId: 'admin', role: 'ADMIN' as 'ADMIN' | 'PLAYER' };
+      const parsed = JSON.parse(raw) as { userId?: string; role?: 'ADMIN' | 'PLAYER' };
+      return { userId: parsed.userId || 'admin', role: parsed.role || 'ADMIN' };
+    } catch {
+      return { userId: 'admin', role: 'ADMIN' as 'ADMIN' | 'PLAYER' };
+    }
+  }, []);
+
+  const canEditPlayer = (player: ManagedPlayer) => auth.role === 'ADMIN' || auth.userId === player.ownerUserId || auth.userId === player.id;
+
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -176,6 +190,7 @@ export function PlayersPage() {
 
 
   const startEditPlayer = (player: ManagedPlayer) => {
+    if (!canEditPlayer(player)) return;
     setEditPlayerId(player.id);
     setNameInput(player.displayName);
     setModeInput(player.preferredCheckoutMode);
@@ -196,6 +211,8 @@ export function PlayersPage() {
 
   const saveEditedPlayer = async () => {
     if (!editPlayerId) return;
+    const target = players.find((p) => p.id === editPlayerId);
+    if (!target || !canEditPlayer(target)) return;
     const trimmedName = nameInput.trim();
     if (!trimmedName) return;
 
@@ -245,10 +262,12 @@ export function PlayersPage() {
         : await generateGenericDartAvatar(trimmedName, 'create', avatarStyleInput);
     }
 
+    const newId = `p-${crypto.randomUUID().slice(0, 8)}`;
+
     persist([
       ...players,
       {
-        id: `p-${crypto.randomUUID().slice(0, 8)}`,
+        id: newId,
         displayName: trimmedName,
         membershipStatus: statusInput,
         nickname: nicknameInput.trim() || undefined,
@@ -269,6 +288,7 @@ export function PlayersPage() {
         avatarSourcePhoto: sourcePhotoInput || undefined,
         avatarKind: sourcePhotoInput ? 'PHOTO_STYLIZED' : 'GENERIC_AI',
         avatarStyle: avatarStyleInput,
+        ownerUserId: newId,
       },
     ]);
 
@@ -418,9 +438,11 @@ export function PlayersPage() {
                 <p className="font-semibold truncate">{player.displayName}{player.nickname ? ` "${player.nickname}"` : ''}</p>
                 <p className="text-xs muted-text">Ø {player.currentAverage} · Checkout {player.checkoutPercentage}% · {player.total180s}x 180</p>
                 <div className="mt-1 flex flex-wrap gap-2">
-                  <button onClick={() => startEditPlayer(player)} className="text-[11px] text-slate-200 flex items-center gap-1">
-                    <Pencil size={12} /> Bearbeiten
-                  </button>
+                  {canEditPlayer(player) && (
+                    <button onClick={() => startEditPlayer(player)} className="text-[11px] text-slate-200 flex items-center gap-1">
+                      <Pencil size={12} /> Bearbeiten
+                    </button>
+                  )}
                   <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="text-[11px] primary-text flex items-center gap-1">
                     <Sparkles size={12} /> KI-Bild aktualisieren
                   </button>

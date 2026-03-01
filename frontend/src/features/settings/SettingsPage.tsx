@@ -37,6 +37,16 @@ export function SettingsPage() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(() => readSettings());
+  const [authContext, setAuthContext] = useState<{ userId: string; role: 'ADMIN' | 'PLAYER' }>(() => {
+    try {
+      const raw = window.localStorage.getItem('htown-auth-context');
+      if (!raw) return { userId: 'admin', role: 'ADMIN' };
+      const parsed = JSON.parse(raw) as { userId?: string; role?: 'ADMIN' | 'PLAYER' };
+      return { userId: parsed.userId || 'admin', role: parsed.role || 'ADMIN' };
+    } catch {
+      return { userId: 'admin', role: 'ADMIN' };
+    }
+  });
 
   const eloPreview = useMemo(() => {
     if (!appSettings.eloRankingEnabled) return 'ELO-Ranking deaktiviert';
@@ -47,6 +57,11 @@ export function SettingsPage() {
     const next = { ...appSettings, ...patch };
     setAppSettings(next);
     window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  };
+
+  const persistAuth = (next: { userId: string; role: 'ADMIN' | 'PLAYER' }) => {
+    setAuthContext(next);
+    window.localStorage.setItem('htown-auth-context', JSON.stringify(next));
   };
 
   return (
@@ -117,6 +132,16 @@ export function SettingsPage() {
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
         <h3 className="text-sm uppercase">Datenschutz</h3>
         <ToggleRow label="Privacy Mode (anonyme Namen in Listen)" value={privacyMode} onToggle={() => setPrivacyMode((v) => !v)} />
+      </div>
+
+      <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
+        <h3 className="text-sm uppercase">Rollen & Rechte</h3>
+        <p className="text-xs muted-text">Spieler dürfen nur eigenes Profil bearbeiten, Admins alles.</p>
+        <label className="text-xs muted-text block">Aktiver Benutzer (ID)</label>
+        <input value={authContext.userId} onChange={(e) => persistAuth({ ...authContext, userId: e.target.value || 'player-1' })} className="w-full rounded-lg bg-slate-800 p-2 text-sm" />
+        <button onClick={() => persistAuth({ ...authContext, role: authContext.role === 'ADMIN' ? 'PLAYER' : 'ADMIN' })} className="w-full rounded-lg bg-slate-800 p-2 text-sm text-left">
+          Rolle: <span className="font-semibold primary-text">{authContext.role}</span>
+        </button>
       </div>
 
       <button className="w-full rounded-xl bg-red-800 p-3 font-medium" onClick={() => setConfirmDelete(true)}>

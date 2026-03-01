@@ -20,6 +20,17 @@ export function PlayerProfilePage() {
   const [trendMode, setTrendMode] = useState<'match' | 'mixed'>('match');
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
+  const auth = useMemo(() => {
+    try {
+      const raw = window.localStorage.getItem('htown-auth-context');
+      if (!raw) return { userId: 'admin', role: 'ADMIN' as 'ADMIN' | 'PLAYER' };
+      const parsed = JSON.parse(raw) as { userId?: string; role?: 'ADMIN' | 'PLAYER' };
+      return { userId: parsed.userId || 'admin', role: parsed.role || 'ADMIN' };
+    } catch {
+      return { userId: 'admin', role: 'ADMIN' as 'ADMIN' | 'PLAYER' };
+    }
+  }, []);
+
   const players = useMemo<ManagedPlayer[]>(() => {
     try {
       const raw = window.localStorage.getItem('htown-players');
@@ -31,6 +42,7 @@ export function PlayerProfilePage() {
 
 
   const player = players.find((p) => p.id === playerId);
+  const canEditProfile = !!player && (auth.role === 'ADMIN' || auth.userId === (player as any).ownerUserId || auth.userId === player.id);
 
   useEffect(() => {
     if (!player) return;
@@ -152,7 +164,7 @@ export function PlayerProfilePage() {
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm uppercase">Spieler-Steckbrief</h3>
-          <button onClick={() => setIsEditingBio((v) => !v)} className="rounded bg-slate-800 px-2 py-1 text-[11px]">{isEditingBio ? 'Fertig' : 'Bearbeiten'}</button>
+          <button disabled={!canEditProfile} onClick={() => setIsEditingBio((v) => !v)} className="rounded bg-slate-800 px-2 py-1 text-[11px] disabled:opacity-40">{isEditingBio ? 'Fertig' : 'Bearbeiten'}</button>
         </div>
 
         {!isEditingBio ? (
@@ -195,6 +207,7 @@ export function PlayerProfilePage() {
               <button onClick={() => previewAnnouncement(player.displayName, bioDraft.nickname, bioDraft.nicknamePronunciation, bioDraft.announcerStyle)} className="rounded bg-slate-800 p-2">Ansage testen</button>
               <button
                 onClick={() => {
+                  if (!canEditProfile) return;
                   const raw = window.localStorage.getItem('htown-players');
                   if (!raw) return;
                   const all = JSON.parse(raw) as ManagedPlayer[];
