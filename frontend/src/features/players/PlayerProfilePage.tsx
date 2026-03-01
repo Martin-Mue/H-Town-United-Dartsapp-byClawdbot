@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 import { computePlayerRankingStats, type HistoryEntry, type ManagedPlayer } from '../statistics/rankingUtils';
+import { computeUnifiedPlayerKpis } from '../statistics/kpiUtils';
 import { getApiBaseUrl } from '../../services/apiBase';
 
 type TournamentStateLite = { championPlayerId: string | null; isCompleted: boolean };
@@ -122,6 +123,12 @@ export function PlayerProfilePage() {
     if (!player) return null;
     return computePlayerRankingStats([player], elo, recentMatches, tournaments)[0] ?? null;
   }, [player, elo, recentMatches, tournaments]);
+
+
+  const unifiedKpi = useMemo(() => {
+    if (!player) return null;
+    return computeUnifiedPlayerKpis(recentMatches).find((row) => row.playerId === player.id) ?? null;
+  }, [player, recentMatches]);
 
   const personalScoringDistribution = useMemo(() => {
     if (!player) return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: 0 }));
