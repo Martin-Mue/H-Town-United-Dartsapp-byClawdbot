@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 import { computePlayerRankingStats, type HistoryEntry, type ManagedPlayer } from '../statistics/rankingUtils';
+import { getApiBaseUrl } from '../../services/apiBase';
 
 type TournamentStateLite = { championPlayerId: string | null; isCompleted: boolean };
 
@@ -71,8 +72,8 @@ export function PlayerProfilePage() {
     const load = async () => {
       try {
         const [tournamentRes, rankingRes] = await Promise.all([
-          fetch('http://localhost:8080/api/tournaments'),
-          fetch('http://localhost:8080/api/global-ranking'),
+          fetch(`${getApiBaseUrl()}/api/tournaments`),
+          fetch(`${getApiBaseUrl()}/api/global-ranking`),
         ]);
         if (!tournamentRes.ok || !rankingRes.ok) return;
         setTournaments((await tournamentRes.json()) as TournamentStateLite[]);

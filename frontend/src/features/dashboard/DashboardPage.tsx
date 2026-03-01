@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Dumbbell, Target, Trophy, Users } from 'lucide-react';
+import { getApiBaseUrl } from '../../services/apiBase';
 
 interface DashboardSummary {
   clubAverage: number;
@@ -56,9 +57,9 @@ export function DashboardPage() {
     try {
       setErrorMessage(null);
       const [summaryResponse, rankingResponse, recentResponse] = await Promise.all([
-        fetch('http://localhost:8080/api/analytics/dashboard-summary'),
-        fetch('http://localhost:8080/api/global-ranking'),
-        fetch('http://localhost:8080/api/game/recent'),
+        fetch(`${getApiBaseUrl()}/api/analytics/dashboard-summary`),
+        fetch(`${getApiBaseUrl()}/api/global-ranking`),
+        fetch(`${getApiBaseUrl()}/api/game/recent`),
       ]);
 
       if (!summaryResponse.ok || !rankingResponse.ok || !recentResponse.ok) throw new Error('bad status');

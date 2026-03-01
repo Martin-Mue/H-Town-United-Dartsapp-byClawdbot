@@ -4,8 +4,11 @@ import { TournamentBracket, type TournamentRound } from '../../components/tourna
 import { GameApiClient } from '../../services/GameApiClient';
 import { TournamentApiClient, type RoundMode, type TournamentFormat, type TournamentStateDto, type ByePlacement, type SeedingMode } from '../../services/TournamentApiClient';
 
-const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
-const gameApiClient = new GameApiClient('http://localhost:8080');
+import { getApiBaseUrl } from '../../services/apiBase';
+
+const API_BASE = getApiBaseUrl();
+const tournamentApiClient = new TournamentApiClient(API_BASE);
+const gameApiClient = new GameApiClient(API_BASE);
 
 type ManagedPlayer = {
   id: string;

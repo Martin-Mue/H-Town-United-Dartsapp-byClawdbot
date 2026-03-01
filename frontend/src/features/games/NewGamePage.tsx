@@ -4,7 +4,9 @@ import { Trophy, Target, ChevronDown } from 'lucide-react';
 import { GameApiClient, type CheckoutMode, type GameMode } from '../../services/GameApiClient';
 import { MODE_RULES } from '../training/modeRules';
 
-const apiClient = new GameApiClient('http://localhost:8080');
+import { getApiBaseUrl } from '../../services/apiBase';
+
+const apiClient = new GameApiClient(getApiBaseUrl());
 
 type ManagedPlayer = { id: string; displayName: string; preferredCheckoutMode: CheckoutMode; membershipStatus: 'CLUB_MEMBER' | 'TRIAL' };
 
@@ -60,7 +62,7 @@ export function NewGamePage() {
       window.localStorage.setItem(`htown-match-settings-${state.matchId}`, JSON.stringify({ bullOffEnabled, bullOffLimitType, bullOffLimitValue }));
       navigate(`/match/${state.matchId}?camera=${cameraAssistEnabled ? '1' : '0'}`);
     } catch {
-      setErrorMessage('Match creation failed. Bitte Backend auf localhost:8080 starten.');
+      setErrorMessage('Match creation failed. Bitte Backend/API prüfen (Port 8080 erreichbar?).');
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,7 @@ import { AverageTrendChart } from '../../components/analytics/AverageTrendChart'
 import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 import { computePlayerRankingStats, sortByMetric, type HistoryEntry, type ManagedPlayer, type RankingMetric } from './rankingUtils';
 import { computeClubKpiSnapshot, computeUnifiedPlayerKpis } from './kpiUtils';
+import { getApiBaseUrl } from '../../services/apiBase';
 
 type RankingEntry = { playerId: string; rating: number };
 type RecentMatch = { matchId: string; mode: string; winnerPlayerId: string | null; players: string[] };
@@ -112,10 +113,10 @@ export function StatisticsPage() {
       try {
         setError(null);
         const [summaryResponse, rankingResponse, recentResponse, tournamentsResponse] = await Promise.all([
-          fetch('http://localhost:8080/api/analytics/dashboard-summary'),
-          fetch('http://localhost:8080/api/global-ranking'),
-          fetch('http://localhost:8080/api/game/recent'),
-          fetch('http://localhost:8080/api/tournaments'),
+          fetch(`${getApiBaseUrl()}/api/analytics/dashboard-summary`),
+          fetch(`${getApiBaseUrl()}/api/global-ranking`),
+          fetch(`${getApiBaseUrl()}/api/game/recent`),
+          fetch(`${getApiBaseUrl()}/api/tournaments`),
         ]);
 
         if (!summaryResponse.ok || !rankingResponse.ok || !recentResponse.ok || !tournamentsResponse.ok) throw new Error();

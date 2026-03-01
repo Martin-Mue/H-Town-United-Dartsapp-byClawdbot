@@ -5,9 +5,12 @@ import { GameApiClient, type MatchStateDto } from '../../services/GameApiClient'
 import { TournamentApiClient } from '../../services/TournamentApiClient';
 import { SocketIoLiveMatchClient } from '../../services/LiveMatchSocketClient';
 
-const apiClient = new GameApiClient('http://localhost:8080');
-const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
-const liveSocketClient = new SocketIoLiveMatchClient('http://localhost:8080');
+import { getApiBaseUrl } from '../../services/apiBase';
+
+const API_BASE = getApiBaseUrl();
+const apiClient = new GameApiClient(API_BASE);
+const tournamentApiClient = new TournamentApiClient(API_BASE);
+const liveSocketClient = new SocketIoLiveMatchClient(API_BASE);
 const CRICKET_TARGETS: Array<15 | 16 | 17 | 18 | 19 | 20 | 25> = [20, 19, 18, 17, 16, 15, 25];
 const MATCH_HISTORY_KEY = 'htown-match-history';
 
