@@ -23,6 +23,8 @@ type ManagedPlayer = {
   pressurePerformanceIndex: number;
   total180s: number;
   avatarUrl: string;
+  avatarSourcePhoto?: string;
+  avatarKind?: 'GENERIC_AI' | 'PHOTO_STYLIZED';
 };
 
 const STORAGE_KEY = 'htown-players';
@@ -55,8 +57,8 @@ const SEED_PLAYERS: ManagedPlayer[] = [
   { id: 'seed-ben', displayName: 'Ben Albrecht', membershipStatus: 'TRIAL', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Schnuppermodus, strong on T20 reps.', currentAverage: 54, checkoutPercentage: 25, pressurePerformanceIndex: 57, total180s: 3, avatarUrl: '' },
 ];
 
-async function generateHtownAvatar(displayName: string, seed = 'htown'): Promise<string> {
-  const prompt = encodeURIComponent(`professional darts player portrait, H-Town United dart jersey, dark arena lights, realistic, ${displayName}`);
+async function generateGenericDartAvatar(displayName: string, seed = 'htown'): Promise<string> {
+  const prompt = encodeURIComponent(`stylized fictional darts avatar, comic esports character, H-Town United jersey, no real person, clean face portrait, ${displayName}`);
   const url = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&seed=${encodeURIComponent(`${seed}-${displayName}`)}`;
   try {
     const response = await fetch(url);
@@ -68,7 +70,7 @@ async function generateHtownAvatar(displayName: string, seed = 'htown'): Promise
   }
 }
 
-async function stylizeFromSourceImage(sourceDataUrl: string): Promise<string> {
+async function generateProAvatarFromSourceImage(sourceDataUrl: string): Promise<string> {
   const img = await loadImage(sourceDataUrl);
   const canvas = document.createElement('canvas');
   canvas.width = 768;
@@ -143,10 +145,16 @@ export function PlayersPage() {
   const [sourcePhotoInput, setSourcePhotoInput] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<'modal' | string>('modal');
 
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  };
+
+
+  const updatePlayerAvatar = (playerId: string, updater: (player: ManagedPlayer) => ManagedPlayer) => {
+    persist(players.map((p) => (p.id === playerId ? updater(p) : p)));
   };
 
   const filtered = useMemo(() => players.filter((p) => p.displayName.toLowerCase().includes(query.toLowerCase())), [players, query]);
@@ -156,7 +164,11 @@ export function PlayersPage() {
     if (!trimmedName) return;
 
     let finalAvatar = avatarInput;
-    if (!finalAvatar) finalAvatar = await generateHtownAvatar(trimmedName, 'create');
+    if (!finalAvatar) {
+      finalAvatar = sourcePhotoInput
+        ? await generateProAvatarFromSourceImage(sourcePhotoInput)
+        : await generateGenericDartAvatar(trimmedName, 'create');
+    }
 
     persist([
       ...players,
@@ -179,6 +191,8 @@ export function PlayersPage() {
         pressurePerformanceIndex: 0,
         total180s: 0,
         avatarUrl: finalAvatar || sourcePhotoInput || '',
+        avatarSourcePhoto: sourcePhotoInput || undefined,
+        avatarKind: sourcePhotoInput ? 'PHOTO_STYLIZED' : 'GENERIC_AI',
       },
     ]);
 
@@ -206,10 +220,10 @@ export function PlayersPage() {
     setIsGenerating(true);
     try {
       if (sourcePhotoInput) {
-        const styled = await stylizeFromSourceImage(sourcePhotoInput);
+        const styled = await generateProAvatarFromSourceImage(sourcePhotoInput);
         setAvatarInput(styled);
       } else {
-        const generated = await generateHtownAvatar(trimmedName, 'modal');
+        const generated = await generateGenericDartAvatar(trimmedName, 'modal');
         setAvatarInput(generated);
       }
     } finally {
@@ -218,17 +232,43 @@ export function PlayersPage() {
   };
 
   const generateAvatarForPlayer = async (playerId: string, displayName: string) => {
-    const generated = await generateHtownAvatar(displayName, playerId);
+    const player = players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    const generated = player.avatarSourcePhoto
+      ? await generateProAvatarFromSourceImage(player.avatarSourcePhoto)
+      : await generateGenericDartAvatar(displayName, playerId);
+
     if (!generated) return;
-    persist(players.map((p) => (p.id === playerId ? { ...p, avatarUrl: generated } : p)));
+    updatePlayerAvatar(playerId, (p) => ({
+      ...p,
+      avatarUrl: generated,
+      avatarKind: p.avatarSourcePhoto ? 'PHOTO_STYLIZED' : 'GENERIC_AI',
+    }));
   };
 
   const onUploadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const dataUrl = await fileToDataUrl(file);
-    setSourcePhotoInput(dataUrl);
-    setAvatarInput(dataUrl);
+
+    if (uploadTarget === 'modal') {
+      setSourcePhotoInput(dataUrl);
+      setAvatarInput(dataUrl);
+    } else {
+      const playerId = uploadTarget;
+      const player = players.find((p) => p.id === playerId);
+      if (!player) return;
+      const styled = await generateProAvatarFromSourceImage(dataUrl);
+      updatePlayerAvatar(playerId, (p) => ({
+        ...p,
+        avatarSourcePhoto: dataUrl,
+        avatarUrl: styled || dataUrl,
+        avatarKind: 'PHOTO_STYLIZED',
+      }));
+    }
+
+    event.target.value = '';
   };
 
   const toggleCamera = async () => {
@@ -270,6 +310,12 @@ export function PlayersPage() {
     setCameraOn(false);
   };
 
+
+  const uploadSourceForPlayer = (playerId: string) => {
+    setUploadTarget(playerId);
+    fileInputRef.current?.click();
+  };
+
   return (
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="flex items-center justify-between">
@@ -292,9 +338,14 @@ export function PlayersPage() {
               <div className="min-w-0">
                 <p className="font-semibold truncate">{player.displayName}{player.nickname ? ` "${player.nickname}"` : ''}</p>
                 <p className="text-xs muted-text">Ø {player.currentAverage} · Checkout {player.checkoutPercentage}% · {player.total180s}x 180</p>
-                <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="mt-1 text-[11px] primary-text flex items-center gap-1">
-                  <Sparkles size={12} /> KI-Bild generieren
-                </button>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="text-[11px] primary-text flex items-center gap-1">
+                    <Sparkles size={12} /> KI-Bild aktualisieren
+                  </button>
+                  <button onClick={() => uploadSourceForPlayer(player.id)} className="text-[11px] text-amber-200 flex items-center gap-1">
+                    <Upload size={12} /> Quelle hochladen
+                  </button>
+                </div>
               </div>
             </div>
             <div className="text-right">
@@ -302,6 +353,7 @@ export function PlayersPage() {
               <span className={`mt-1 inline-block text-[10px] rounded px-2 py-1 ${player.membershipStatus === 'CLUB_MEMBER' ? 'bg-emerald-900/40 text-emerald-200' : 'bg-amber-900/40 text-amber-200'}`}>
                 {player.membershipStatus === 'CLUB_MEMBER' ? 'Vereinsmitglied' : 'Schnuppermodus'}
               </span>
+              <span className="mt-1 inline-block text-[10px] rounded px-2 py-1 bg-slate-800 text-slate-300">{player.avatarKind === 'PHOTO_STYLIZED' ? 'Foto-basiert' : 'Generisch'}</span>
             </div>
           </article>
         ))}
@@ -355,7 +407,7 @@ export function PlayersPage() {
               <button onClick={generateAvatarForModal} disabled={isGenerating} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1 disabled:opacity-60">
                 {isGenerating ? <><Loader2 size={12} className="animate-spin" /> Generiere...</> : <><Sparkles size={12} /> KI generieren</>}
               </button>
-              <button onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
+              <button onClick={() => { setUploadTarget('modal'); fileInputRef.current?.click(); }} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
                 <Upload size={12} /> Bild hochladen
               </button>
               <button onClick={toggleCamera} className="col-span-2 rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1">
@@ -374,7 +426,7 @@ export function PlayersPage() {
 
             {avatarInput && <img src={avatarInput} alt="Avatar preview" className="h-32 w-32 mx-auto rounded-xl object-cover border soft-border" />}
             {!avatarInput && <p className="text-[11px] muted-text text-center">Vorschau erscheint hier vor dem Speichern.</p>}
-            <p className="text-[11px] muted-text text-center">Tipp: Erst Foto hochladen/aufnehmen, dann KI generieren für realistischeren H-Town-Look.</p>
+            <p className="text-[11px] muted-text text-center">Mit Foto: foto-basierte Pro-Optik. Ohne Foto: generischer Dart-Avatar (keine reale Person).</p>
 
             <select value={modeInput} onChange={(e) => setModeInput(e.target.value as CheckoutMode)} className="w-full rounded-xl bg-slate-800 p-3">
               <option value="SINGLE_OUT">Single Out</option>
