@@ -208,7 +208,8 @@ export function MatchLivePage() {
 
   useEffect(() => {
     if (!cameraAutoEnabled || cameraOn) return;
-    void toggleCamera();
+    // Auto-attempt on match start; if blocked by browser policy, user can retry via button.
+    void toggleCamera(true);
   }, [cameraAutoEnabled, cameraOn]);
 
   const isCricket = state?.mode === 'CRICKET';
@@ -284,7 +285,7 @@ export function MatchLivePage() {
   };
 
 
-  const toggleCamera = async () => {
+  const toggleCamera = async (autoAttempt = false) => {
     if (cameraOn) {
       const stream = videoRef.current?.srcObject as MediaStream | null;
       stream?.getTracks().forEach((t) => t.stop());
@@ -298,9 +299,16 @@ export function MatchLivePage() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
+        videoRef.current.autoplay = true;
+        try {
+          await videoRef.current.play();
+        } catch {
+          // mobile browsers can block autoplay without direct gesture
+        }
       }
-      setCameraHint('Kamera aktiv (Beta): Score-Vorschlag folgt im nächsten CV-Schritt.');
+      setCameraHint('Kamera aktiv: Live-Bild + KI-Erkennung bereit.');
       setCameraOn(true);
       setCameraStatus('calibrating');
       const calibration = await apiClient.calibrateBoardCamera({ matchId: state?.matchId ?? matchId });
@@ -309,7 +317,11 @@ export function MatchLivePage() {
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Unbekannter Fehler';
       setCameraHint(`Kamera konnte nicht gestartet werden: ${reason}`);
-      setErrorMessage('Kamera-Start fehlgeschlagen. Bitte Kamera-Berechtigung im Browser erlauben.');
+      setErrorMessage(
+        autoAttempt
+          ? 'Auto-Kamera konnte nicht gestartet werden. Bitte auf "Kamera" tippen und Berechtigung erlauben.'
+          : 'Kamera-Start fehlgeschlagen. Bitte Kamera-Berechtigung im Browser erlauben.',
+      );
     }
   };
 
@@ -716,13 +728,14 @@ export function MatchLivePage() {
       <div className="w-full max-w-xl rounded-2xl border soft-border card-bg p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm uppercase">Wurf Eingabe</h3>
-          <button onClick={toggleCamera} className="rounded-lg bg-slate-800 px-2 py-1 text-xs flex items-center gap-1">
+          <button onClick={() => void toggleCamera(false)} className="rounded-lg bg-slate-800 px-2 py-1 text-xs flex items-center gap-1">
             {cameraOn ? <CameraOff size={14} /> : <Camera size={14} />} {cameraOn ? 'Kamera aus' : 'Kamera'}
           </button>
         </div>
 
         {cameraOn && <video ref={videoRef} className="w-full rounded-xl border soft-border bg-black" muted playsInline />}
         {cameraHint && <p className="text-[11px] muted-text">{cameraHint}</p>}
+        {cameraOn && <p className="text-[11px] muted-text">Wenn Bild schwarz bleibt: Kamera aus/an tippen oder Browser neu laden.</p>}
 
         <div className="grid grid-cols-3 gap-2">
           {[1, 2, 3].map((v) => {
