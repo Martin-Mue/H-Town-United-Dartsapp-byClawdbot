@@ -73,10 +73,10 @@ Arbeitsmodus: iterativ mit Live-Feedback
 
 ---
 
-## Aktive Reihenfolge (vereinbart)
-1. Block 1: Spiellogik final strict
-2. Block 2: Turnier-UX + Bracket + Turnierparität
-3. Block 3: Kamera/Erkennung stabil & ausgebaut
+## Aktive Reihenfolge (neu priorisiert)
+1. Block 3: Kamera/Erkennung als Kernfunktion (lokal + remote + automatisierter Turn)
+2. Block 1: Spiellogik final strict
+3. Block 2: Turnier-UX + Bracket + Turnierparität
 
 ---
 
