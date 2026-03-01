@@ -81,6 +81,9 @@ export function MatchLivePage() {
   const [showPreMatchTips, setShowPreMatchTips] = useState(false);
   const [cameraStatus, setCameraStatus] = useState<'disconnected' | 'connected' | 'calibrating' | 'detecting' | 'waiting_for_pull'>('disconnected');
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const [remoteStatus, setRemoteStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('idle');
+  const lastBoardStateRef = useRef<'DARTS_PRESENT' | 'DARTS_CLEARED' | null>(null);
   const [autoVisitLoopEnabled, setAutoVisitLoopEnabled] = useState(false);
   const [calibrationQuality, setCalibrationQuality] = useState<string | null>(null);
   const [lastDetectedVisit, setLastDetectedVisit] = useState<Array<{ points: number; multiplier: 1 | 2 | 3; targetNumber?: 15 | 16 | 17 | 18 | 19 | 20 | 25 }> | null>(null);
@@ -113,15 +116,58 @@ export function MatchLivePage() {
   useEffect(() => {
     if (!matchId) return;
     let mounted = true;
+
+    const initPeer = async () => {
+      const pc = new RTCPeerConnection();
+      peerConnectionRef.current = pc;
+      pc.ontrack = (event) => {
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          setRemoteStatus('connected');
+        }
+      };
+      pc.onicecandidate = (event) => {
+        if (event.candidate) liveSocketClient.sendWebRtcSignal(matchId, { candidate: event.candidate });
+      };
+
+      liveSocketClient.onWebRtcSignal(async ({ signal }) => {
+        const payload = signal as { offer?: RTCSessionDescriptionInit; answer?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
+        try {
+          if (payload.offer) {
+            setRemoteStatus('connecting');
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            liveSocketClient.sendWebRtcSignal(matchId, { answer });
+          } else if (payload.answer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+            setRemoteStatus('connected');
+          } else if (payload.candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+          }
+        } catch {
+          setRemoteStatus('failed');
+        }
+      });
+
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      }
+    };
+
     void liveSocketClient.connect().then(() => {
       if (!mounted) return;
       liveSocketClient.subscribeToMatch(matchId);
       liveSocketClient.joinCameraRoom(matchId);
+      void initPeer();
       setCameraStatus((prev) => (prev === 'disconnected' ? 'connected' : prev));
     });
 
     return () => {
       mounted = false;
+      peerConnectionRef.current?.close();
+      peerConnectionRef.current = null;
       liveSocketClient.disconnect();
     };
   }, [matchId]);
@@ -308,6 +354,19 @@ export function MatchLivePage() {
           // mobile browsers can block autoplay without direct gesture
         }
       }
+      const pc = peerConnectionRef.current;
+      if (pc) {
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          liveSocketClient.sendWebRtcSignal(matchId, { offer });
+          setRemoteStatus('connecting');
+        } catch {
+          setRemoteStatus('failed');
+        }
+      }
+
       setCameraHint('Kamera aktiv: Live-Bild + KI-Erkennung bereit.');
       setCameraOn(true);
       setCameraStatus('calibrating');
