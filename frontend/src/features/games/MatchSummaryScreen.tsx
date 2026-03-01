@@ -11,6 +11,7 @@ type HistoryEntry = {
   winnerPlayerId: string | null;
   winnerName: string | null;
   resultLabel: string;
+  legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }>;
 };
 
 /** Post-game summary styled after h-town-united stats mindset with export + trend sections. */
@@ -40,7 +41,7 @@ export function MatchSummaryScreen() {
   const exportSummary = () => {
     const payload = {
       matchId: lastMatch?.id ?? 'sample-match',
-      winner: lastMatch?.winnerName ?? 'Unknown',
+      winner: lastMatch?.winnerName ?? 'Unbekannt',
       summary: lastMatch?.resultLabel ?? 'No result data',
       players: lastMatch?.players ?? [],
       mode: lastMatch?.mode ?? 'X01_501',
@@ -60,17 +61,33 @@ export function MatchSummaryScreen() {
       <div className="hero-gradient rounded-2xl border soft-border p-4">
         <div className="flex items-center gap-2">
           <Trophy size={20} className="text-[var(--accent)]" />
-          <h2 className="text-xl uppercase">Match Summary</h2>
+          <h2 className="text-xl uppercase">Match-Auswertung</h2>
         </div>
-        <p className="text-xs muted-text mt-1">Post-Game Auswertung im H-Town Stil.</p>
+        <p className="text-xs muted-text mt-1">Gesamtergebnis + Leg-Auswertung im H-Town Stil.</p>
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-2 text-sm">
-        <p><span className="muted-text">Winner:</span> <span className="font-semibold primary-text">{lastMatch?.winnerName ?? 'Noch kein Sieger'}</span></p>
-        <p><span className="muted-text">Mode:</span> {lastMatch?.mode?.replace('_', ' ') ?? '—'}</p>
-        <p><span className="muted-text">Result:</span> {lastMatch?.resultLabel ?? '—'}</p>
-        <p><span className="muted-text">Players:</span> {lastMatch?.players.map((p) => p.name).join(' vs ') ?? '—'}</p>
+        <p><span className="muted-text">Sieger:</span> <span className="font-semibold primary-text">{lastMatch?.winnerName ?? 'Noch kein Sieger'}</span></p>
+        <p><span className="muted-text">Modus:</span> {lastMatch?.mode?.replace('_', ' ') ?? '—'}</p>
+        <p><span className="muted-text">Ergebnis:</span> {lastMatch?.resultLabel ?? '—'}</p>
+        <p><span className="muted-text">Spieler:</span> {lastMatch?.players.map((p) => p.name).join(' vs ') ?? '—'}</p>
       </div>
+
+
+      {lastMatch?.legResults && lastMatch.legResults.length > 0 && (
+        <div className="rounded-2xl card-bg border soft-border p-4">
+          <h3 className="text-sm uppercase mb-2">Leg-Ergebnisse</h3>
+          <div className="space-y-1 text-xs">
+            {lastMatch.legResults.map((leg) => (
+              <div key={`leg-${leg.legNumber}`} className="rounded bg-slate-800 p-2 flex items-center justify-between gap-2">
+                <span>Leg {leg.legNumber}</span>
+                <span className="primary-text font-semibold">{leg.winnerDisplayName}</span>
+                <span className="muted-text">Sets nach Leg: {leg.setsAfterLeg} · Legs gesamt: {leg.totalLegsWonAfterLeg}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2 flex items-center gap-2"><BarChart3 size={14} /> Leistungs-Trend</h3>
@@ -79,7 +96,7 @@ export function MatchSummaryScreen() {
 
       <div className="grid grid-cols-2 gap-2">
         <button onClick={exportSummary} className="rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2">
-          <Download size={14} /> Export Report
+          <Download size={14} /> Export
         </button>
         <Link to={backTarget} className="rounded-xl bg-slate-800 p-3 text-center">{backTarget === '/tournaments' ? 'Zurück zum Turnier' : 'Zu Statistiken'}</Link>
       </div>

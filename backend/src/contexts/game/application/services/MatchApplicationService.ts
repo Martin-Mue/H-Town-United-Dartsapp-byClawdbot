@@ -173,6 +173,13 @@ export class MatchApplicationService {
         legs: match.getScoreboard().getLegs(player.playerId),
         sets: match.getScoreboard().getSets(player.playerId),
       })),
+      legResults: match.getLegHistory().map((leg) => ({
+        legNumber: leg.legNumber,
+        winnerPlayerId: leg.winnerPlayerId,
+        winnerDisplayName: players.find((p) => p.playerId === leg.winnerPlayerId)?.displayName ?? leg.winnerPlayerId,
+        setsAfterLeg: leg.setsAfterLeg,
+        totalLegsWonAfterLeg: leg.totalLegsWonAfterLeg,
+      })),
     };
   }
 }

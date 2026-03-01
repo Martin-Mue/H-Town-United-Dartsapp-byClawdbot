@@ -19,6 +19,7 @@ export class DartsMatchAggregate extends AggregateRoot {
   private readonly scoreboard: MatchScoreboard;
   private readonly cricketBoardState: CricketBoardState;
   private readonly cricketScores = new Map<string, number>();
+  private readonly legHistory: Array<{ legNumber: number; winnerPlayerId: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }> = [];
 
   constructor(
     public readonly matchId: string,
@@ -85,6 +86,12 @@ export class DartsMatchAggregate extends AggregateRoot {
     if (remaining === 0) {
       player.successfulCheckouts += 1;
       this.scoreboard.registerLegWinner(player.playerId, this.configuration.legsPerSet);
+      this.legHistory.push({
+        legNumber: this.legHistory.length + 1,
+        winnerPlayerId: player.playerId,
+        setsAfterLeg: this.scoreboard.getSets(player.playerId),
+        totalLegsWonAfterLeg: this.scoreboard.getTotalLegs(player.playerId),
+      });
       this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
 
       if (this.scoreboard.getSets(player.playerId) >= this.configuration.setsToWin) {
@@ -121,6 +128,13 @@ export class DartsMatchAggregate extends AggregateRoot {
       const playerScore = this.getCricketScore(player.playerId);
       const topOpponentScore = Math.max(...opponents.map((id) => this.getCricketScore(id)));
       if (result.playerClosedBoard && playerScore >= topOpponentScore) {
+        this.scoreboard.registerLegWinner(player.playerId, this.configuration.legsPerSet);
+        this.legHistory.push({
+          legNumber: this.legHistory.length + 1,
+          winnerPlayerId: player.playerId,
+          setsAfterLeg: this.scoreboard.getSets(player.playerId),
+          totalLegsWonAfterLeg: this.scoreboard.getTotalLegs(player.playerId),
+        });
         this.winnerPlayerId = player.playerId;
         this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
         return;
@@ -138,6 +152,12 @@ export class DartsMatchAggregate extends AggregateRoot {
   /** Returns winner id when match has reached terminal state. */
   public getWinnerPlayerId(): string | null {
     return this.winnerPlayerId;
+  }
+
+
+  /** Returns chronological leg winners with set/leg snapshots. */
+  public getLegHistory(): Array<{ legNumber: number; winnerPlayerId: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }> {
+    return [...this.legHistory];
   }
 
   /** Force-resolves winner via bull-off decision when configured by caller flow. */

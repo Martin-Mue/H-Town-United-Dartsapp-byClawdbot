@@ -18,6 +18,7 @@ type HistoryEntry = {
   winnerName: string | null;
   resultLabel: string;
   playerTurnScores?: Record<string, number[]>;
+  legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }>;
 };
 
 type ManagedPlayer = {
@@ -297,6 +298,7 @@ export function MatchLivePage() {
       winnerName: winner?.displayName ?? null,
       resultLabel,
       playerTurnScores: turnScoresOverride ?? playerTurnScores,
+      legResults: next.legResults,
     };
 
     try {

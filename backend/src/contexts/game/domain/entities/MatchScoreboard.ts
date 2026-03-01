@@ -2,11 +2,13 @@
 export class MatchScoreboard {
   private readonly legsWon = new Map<string, number>();
   private readonly setsWon = new Map<string, number>();
+  private readonly totalLegsWon = new Map<string, number>();
 
   constructor(playerIds: string[]) {
     for (const playerId of playerIds) {
       this.legsWon.set(playerId, 0);
       this.setsWon.set(playerId, 0);
+      this.totalLegsWon.set(playerId, 0);
     }
   }
 
@@ -14,6 +16,7 @@ export class MatchScoreboard {
   public registerLegWinner(playerId: string, legsPerSet: number): void {
     const currentLegs = (this.legsWon.get(playerId) ?? 0) + 1;
     this.legsWon.set(playerId, currentLegs);
+    this.totalLegsWon.set(playerId, (this.totalLegsWon.get(playerId) ?? 0) + 1);
 
     if (currentLegs >= legsPerSet) {
       this.legsWon.set(playerId, 0);
@@ -29,5 +32,10 @@ export class MatchScoreboard {
   /** Returns full sets won by player id. */
   public getSets(playerId: string): number {
     return this.setsWon.get(playerId) ?? 0;
+  }
+
+  /** Returns total legs won across all sets. */
+  public getTotalLegs(playerId: string): number {
+    return this.totalLegsWon.get(playerId) ?? 0;
   }
 }

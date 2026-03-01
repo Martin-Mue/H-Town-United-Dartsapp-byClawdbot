@@ -27,4 +27,11 @@ export interface MatchStateDto {
     legs: number;
     sets: number;
   }>;
+  legResults: Array<{
+    legNumber: number;
+    winnerPlayerId: string;
+    winnerDisplayName: string;
+    setsAfterLeg: number;
+    totalLegsWonAfterLeg: number;
+  }>;
 }
