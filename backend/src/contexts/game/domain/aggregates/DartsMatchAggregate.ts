@@ -19,7 +19,9 @@ export class DartsMatchAggregate extends AggregateRoot {
   private readonly scoreboard: MatchScoreboard;
   private readonly cricketBoardState: CricketBoardState;
   private readonly cricketScores = new Map<string, number>();
-  private readonly legHistory: Array<{ legNumber: number; winnerPlayerId: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }> = [];
+  private readonly legHistory: Array<{ legNumber: number; winnerPlayerId: string; setsAfterLeg: number; totalLegsWonAfterLeg: number; dartsUsedByWinner: number; turnsByWinner: number }> = [];
+  private readonly currentLegDartsByPlayer = new Map<string, number>();
+  private readonly currentLegTurnsByPlayer = new Map<string, number>();
 
   constructor(
     public readonly matchId: string,
@@ -33,7 +35,11 @@ export class DartsMatchAggregate extends AggregateRoot {
     if (this.activePlayerIndex < 0) this.activePlayerIndex = 0;
     this.scoreboard = new MatchScoreboard(this.playerOrder);
     this.cricketBoardState = new CricketBoardState(this.playerOrder);
-    this.playerOrder.forEach((id) => this.cricketScores.set(id, 0));
+    this.playerOrder.forEach((id) => {
+      this.cricketScores.set(id, 0);
+      this.currentLegDartsByPlayer.set(id, 0);
+      this.currentLegTurnsByPlayer.set(id, 0);
+    });
   }
 
   /** Returns immutable player leg states. */
@@ -72,6 +78,8 @@ export class DartsMatchAggregate extends AggregateRoot {
     if (this.configuration.mode === 'CRICKET') return;
 
     const player = this.getActivePlayer();
+    this.currentLegDartsByPlayer.set(player.playerId, (this.currentLegDartsByPlayer.get(player.playerId) ?? 0) + dartsUsed);
+    this.currentLegTurnsByPlayer.set(player.playerId, (this.currentLegTurnsByPlayer.get(player.playerId) ?? 0) + 1);
     const remaining = player.score - points;
 
     if (remaining < 0 || !this.isValidCheckout(remaining, finalDartMultiplier, player.checkoutMode)) {
@@ -91,6 +99,8 @@ export class DartsMatchAggregate extends AggregateRoot {
         winnerPlayerId: player.playerId,
         setsAfterLeg: this.scoreboard.getSets(player.playerId),
         totalLegsWonAfterLeg: this.scoreboard.getTotalLegs(player.playerId),
+        dartsUsedByWinner: this.currentLegDartsByPlayer.get(player.playerId) ?? 0,
+        turnsByWinner: this.currentLegTurnsByPlayer.get(player.playerId) ?? 0,
       });
       this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
 
@@ -112,6 +122,9 @@ export class DartsMatchAggregate extends AggregateRoot {
     if (this.configuration.mode !== 'CRICKET') return;
 
     const player = this.getActivePlayer();
+    const dartsUsed = throws.slice(0, 3).length as 1 | 2 | 3;
+    this.currentLegDartsByPlayer.set(player.playerId, (this.currentLegDartsByPlayer.get(player.playerId) ?? 0) + dartsUsed);
+    this.currentLegTurnsByPlayer.set(player.playerId, (this.currentLegTurnsByPlayer.get(player.playerId) ?? 0) + 1);
     const service = new CricketScoringService(this.cricketBoardState);
     const opponents = this.playerOrder.filter((id) => id !== player.playerId);
 
@@ -134,6 +147,8 @@ export class DartsMatchAggregate extends AggregateRoot {
           winnerPlayerId: player.playerId,
           setsAfterLeg: this.scoreboard.getSets(player.playerId),
           totalLegsWonAfterLeg: this.scoreboard.getTotalLegs(player.playerId),
+          dartsUsedByWinner: this.currentLegDartsByPlayer.get(player.playerId) ?? 0,
+          turnsByWinner: this.currentLegTurnsByPlayer.get(player.playerId) ?? 0,
         });
         this.winnerPlayerId = player.playerId;
         this.addDomainEvent(new LegWonEvent(this.matchId, player.playerId, this.legNumber));
@@ -156,7 +171,7 @@ export class DartsMatchAggregate extends AggregateRoot {
 
 
   /** Returns chronological leg winners with set/leg snapshots. */
-  public getLegHistory(): Array<{ legNumber: number; winnerPlayerId: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }> {
+  public getLegHistory(): Array<{ legNumber: number; winnerPlayerId: string; setsAfterLeg: number; totalLegsWonAfterLeg: number; dartsUsedByWinner: number; turnsByWinner: number }> {
     return [...this.legHistory];
   }
 
@@ -200,6 +215,11 @@ export class DartsMatchAggregate extends AggregateRoot {
 
   /** Advances active player index in round-robin order. */
   private moveToNextPlayer(): void {
+    this.playerOrder.forEach((id) => {
+      this.currentLegDartsByPlayer.set(id, 0);
+      this.currentLegTurnsByPlayer.set(id, 0);
+    });
+
     this.activePlayerIndex = (this.activePlayerIndex + 1) % this.players.length;
   }
 
@@ -219,6 +239,11 @@ export class DartsMatchAggregate extends AggregateRoot {
       next.successfulCheckouts = player.successfulCheckouts;
       next.highestTurnScore = player.highestTurnScore;
       return next;
+    });
+
+    this.playerOrder.forEach((id) => {
+      this.currentLegDartsByPlayer.set(id, 0);
+      this.currentLegTurnsByPlayer.set(id, 0);
     });
 
     this.activePlayerIndex = (this.activePlayerIndex + 1) % this.players.length;

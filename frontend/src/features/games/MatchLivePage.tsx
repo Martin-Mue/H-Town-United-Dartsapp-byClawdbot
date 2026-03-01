@@ -18,7 +18,7 @@ type HistoryEntry = {
   winnerName: string | null;
   resultLabel: string;
   playerTurnScores?: Record<string, number[]>;
-  legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }>;
+  legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number; dartsUsedByWinner: number; turnsByWinner: number }>;
 };
 
 type ManagedPlayer = {
@@ -62,11 +62,14 @@ export function MatchLivePage() {
   const [legStarterPlayerId, setLegStarterPlayerId] = useState<string | null>(null);
   const [lastLegSnapshot, setLastLegSnapshot] = useState('');
   const [showPreMatchTips, setShowPreMatchTips] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<'disconnected' | 'connected' | 'calibrating' | 'detecting' | 'waiting_for_pull'>('disconnected');
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
   const round = query.get('round');
   const fixture = query.get('fixture');
+  const cameraAutoEnabled = query.get('camera') === '1';
 
   useEffect(() => {
     if (!matchId) return;
@@ -164,6 +167,12 @@ export function MatchLivePage() {
     window.speechSynthesis.speak(utterance);
   }, [state, preMatchSeen, localPlayers]);
 
+
+  useEffect(() => {
+    if (!cameraAutoEnabled || cameraOn) return;
+    void toggleCamera();
+  }, [cameraAutoEnabled, cameraOn]);
+
   const isCricket = state?.mode === 'CRICKET';
   const active = useMemo(() => state?.players.find((p) => p.playerId === state.activePlayerId), [state]);
 
@@ -243,6 +252,7 @@ export function MatchLivePage() {
       stream?.getTracks().forEach((t) => t.stop());
       if (videoRef.current) videoRef.current.srcObject = null;
       setCameraOn(false);
+      setCameraStatus('disconnected');
       return;
     }
 
@@ -254,6 +264,8 @@ export function MatchLivePage() {
       }
       setCameraHint('Kamera aktiv (Beta): Score-Vorschlag folgt im nächsten CV-Schritt.');
       setCameraOn(true);
+      setCameraStatus('calibrating');
+      setTimeout(() => setCameraStatus('waiting_for_pull'), 800);
     } catch {
       setCameraHint('Kamera konnte nicht gestartet werden. Browser-Berechtigung prüfen.');
     }
@@ -266,6 +278,7 @@ export function MatchLivePage() {
     const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${effectiveMultiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${effectiveMultiplier}`;
     setPendingX01((prev) => [...prev, { points, multiplier: effectiveMultiplier, label }]);
     setErrorMessage(null);
+    setCameraStatus('waiting_for_pull');
   };
 
   const addCricketThrowToTurn = () => {
@@ -273,6 +286,7 @@ export function MatchLivePage() {
     const effectiveMultiplier: 1 | 2 | 3 = cricketTarget === 25 && multiplier === 3 ? 2 : multiplier;
     setPendingCricket((prev) => [...prev, { targetNumber: cricketTarget, multiplier: effectiveMultiplier }]);
     setErrorMessage(null);
+    setCameraStatus('waiting_for_pull');
   };
 
   const clearTurn = () => {
@@ -332,6 +346,7 @@ export function MatchLivePage() {
 
   const runCameraDetection = async () => {
     if (!state) return;
+    setCameraStatus('detecting');
     const suggestedPoints = Math.min(180, selected === 50 ? 50 : Math.max(0, selected * multiplier));
     const result = await apiClient.detectThrowWithCamera({
       matchId: state.matchId,
@@ -348,6 +363,7 @@ export function MatchLivePage() {
       });
       setCameraDetection(null);
       setErrorMessage('KI-Vorschlag hat geringe Sicherheit. Bitte manuell prüfen und bestätigen.');
+      setCameraStatus('waiting_for_pull');
       return;
     }
 
@@ -360,6 +376,7 @@ export function MatchLivePage() {
       requiresManualReview: result.requiresManualReview,
     });
     setErrorMessage(null);
+    setCameraStatus('waiting_for_pull');
   };
 
 
@@ -383,6 +400,7 @@ export function MatchLivePage() {
     });
     setCameraReviewDraft(null);
     setErrorMessage(null);
+    setCameraStatus('waiting_for_pull');
   };
   const submitTurn = async () => {
     if (!state) return;

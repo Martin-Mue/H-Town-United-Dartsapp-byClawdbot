@@ -11,7 +11,7 @@ type HistoryEntry = {
   winnerPlayerId: string | null;
   winnerName: string | null;
   resultLabel: string;
-  legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number }>;
+  legResults?: Array<{ legNumber: number; winnerPlayerId: string; winnerDisplayName: string; setsAfterLeg: number; totalLegsWonAfterLeg: number; dartsUsedByWinner: number; turnsByWinner: number }>;
 };
 
 /** Post-game summary styled after h-town-united stats mindset with export + trend sections. */
@@ -82,7 +82,7 @@ export function MatchSummaryScreen() {
               <div key={`leg-${leg.legNumber}`} className="rounded bg-slate-800 p-2 flex items-center justify-between gap-2">
                 <span>Leg {leg.legNumber}</span>
                 <span className="primary-text font-semibold">{leg.winnerDisplayName}</span>
-                <span className="muted-text">Sets nach Leg: {leg.setsAfterLeg} · Legs gesamt: {leg.totalLegsWonAfterLeg}</span>
+                <span className="muted-text">Sets nach Leg: {leg.setsAfterLeg} · Legs gesamt: {leg.totalLegsWonAfterLeg} · {leg.dartsUsedByWinner} Darts / {leg.turnsByWinner} Turns</span>
               </div>
             ))}
           </div>

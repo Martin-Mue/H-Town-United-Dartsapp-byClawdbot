@@ -24,6 +24,7 @@ export function NewGamePage() {
   const [bullOffLimitValue, setBullOffLimitValue] = useState(20);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cameraAssistEnabled, setCameraAssistEnabled] = useState(true);
 
   const clubPlayers = useMemo<ManagedPlayer[]>(() => {
     try {
@@ -57,7 +58,7 @@ export function NewGamePage() {
 
       window.localStorage.setItem('htown-active-match-id', state.matchId);
       window.localStorage.setItem(`htown-match-settings-${state.matchId}`, JSON.stringify({ bullOffEnabled, bullOffLimitType, bullOffLimitValue }));
-      navigate(`/match/${state.matchId}`);
+      navigate(`/match/${state.matchId}?camera=${cameraAssistEnabled ? '1' : '0'}`);
     } catch {
       setErrorMessage('Match creation failed. Bitte Backend auf localhost:8080 starten.');
     } finally {
@@ -160,6 +161,14 @@ export function NewGamePage() {
             <input type="number" min={1} value={bullOffLimitValue} onChange={(e) => setBullOffLimitValue(Number(e.target.value || 1))} className="rounded bg-slate-800 p-2" />
           </div>
         )}
+      </div>
+
+
+      <div className="card-bg rounded-2xl border soft-border p-4 space-y-2">
+        <h3 className="text-sm uppercase">Kamera-Assist beim Start</h3>
+        <button onClick={() => setCameraAssistEnabled((v) => !v)} className="w-full rounded-lg bg-slate-800 p-2 text-xs text-left">
+          Kamera direkt aktivieren: <span className="primary-text font-semibold">{cameraAssistEnabled ? 'Ja' : 'Nein'}</span>
+        </button>
       </div>
 
       {errorMessage && <p className="rounded-xl bg-red-900/40 p-3 text-sm text-red-100">{errorMessage}</p>}

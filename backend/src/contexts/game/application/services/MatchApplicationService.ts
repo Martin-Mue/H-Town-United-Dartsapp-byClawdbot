@@ -179,6 +179,8 @@ export class MatchApplicationService {
         winnerDisplayName: players.find((p) => p.playerId === leg.winnerPlayerId)?.displayName ?? leg.winnerPlayerId,
         setsAfterLeg: leg.setsAfterLeg,
         totalLegsWonAfterLeg: leg.totalLegsWonAfterLeg,
+        dartsUsedByWinner: leg.dartsUsedByWinner,
+        turnsByWinner: leg.turnsByWinner,
       })),
     };
   }

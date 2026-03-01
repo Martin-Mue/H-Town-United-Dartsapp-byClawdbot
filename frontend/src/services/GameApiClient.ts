@@ -43,6 +43,8 @@ export interface MatchStateDto {
     winnerDisplayName: string;
     setsAfterLeg: number;
     totalLegsWonAfterLeg: number;
+    dartsUsedByWinner: number;
+    turnsByWinner: number;
   }>;
 }
 
