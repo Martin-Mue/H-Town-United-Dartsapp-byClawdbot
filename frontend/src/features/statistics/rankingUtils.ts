@@ -31,6 +31,16 @@ export type HistoryEntry = {
     segments: Record<string, number>;
     doubles: Record<string, number>;
   }>;
+  playerMatchStats?: Array<{
+    playerId: string;
+    displayName: string;
+    first9Average: number;
+    matchAverage: number;
+    checkoutAttempts: number;
+    successfulCheckouts: number;
+    bestLegDarts: number | null;
+    worstLegDarts: number | null;
+  }>;
 };
 
 export type TournamentStateLite = {

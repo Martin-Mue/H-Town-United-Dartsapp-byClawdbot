@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 import { computePlayerRankingStats, sortByMetric, type HistoryEntry, type ManagedPlayer, type RankingMetric } from './rankingUtils';
+import { computeClubKpiSnapshot, computeUnifiedPlayerKpis } from './kpiUtils';
 
 type RankingEntry = { playerId: string; rating: number };
 type RecentMatch = { matchId: string; mode: string; winnerPlayerId: string | null; players: string[] };
@@ -135,6 +136,9 @@ export function StatisticsPage() {
     return sortByMetric(rows, filter);
   }, [localPlayers, ranking, filteredHistory, tournaments, filter]);
 
+  const unifiedRows = useMemo(() => computeUnifiedPlayerKpis(filteredHistory), [filteredHistory]);
+  const kpiSnapshot = useMemo(() => computeClubKpiSnapshot(filteredHistory), [filteredHistory]);
+
   const completedTournaments = tournaments.filter((t) => t.isCompleted).length;
 
 
@@ -165,10 +169,16 @@ export function StatisticsPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Club Average" value={String(summary?.clubAverage ?? 0)} />
-        <StatCard label="Checkout %" value={String(summary?.checkoutAverage ?? 0)} />
-        <StatCard label="Aktive Matches" value={String(summary?.liveMatches ?? 0)} />
+        <StatCard label="Club Average" value={String(kpiSnapshot.clubAverage || summary?.clubAverage || 0)} />
+        <StatCard label="First-9 Ø" value={String(kpiSnapshot.first9Average)} />
+        <StatCard label="Checkout %" value={String(kpiSnapshot.checkoutRate || summary?.checkoutAverage || 0)} />
         <StatCard label="Abg. Turniere" value={String(completedTournaments)} />
+      </div>
+
+
+      <div className="rounded-2xl card-bg border soft-border p-4 space-y-2 text-xs">
+        <h3 className="text-sm uppercase">KPI-Standard (vereinheitlicht)</h3>
+        <p className="muted-text">3-Dart Ø und First-9 Ø werden aus denselben Turn-Daten berechnet (Match/Profil/Statistik). Checkout% = erfolgreiche Checkouts / Checkout-Versuche.</p>
       </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
@@ -258,6 +268,20 @@ export function StatisticsPage() {
               <span className="primary-text font-semibold">{row.hits}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+
+      <div className="rounded-2xl card-bg border soft-border p-4">
+        <h3 className="text-sm uppercase mb-2">Einheitliche KPI-Tabelle</h3>
+        <div className="space-y-1 text-xs">
+          {unifiedRows.map((row) => (
+            <div key={`u-${row.playerId}`} className="rounded bg-slate-800 p-2">
+              <p className="font-semibold">{row.displayName}</p>
+              <p className="muted-text">3-Dart Ø {row.threeDartAverage} · First-9 Ø {row.first9Average} · Checkout {row.checkoutRate}%</p>
+            </div>
+          ))}
+          {unifiedRows.length === 0 && <p className="muted-text">Noch keine KPI-Daten vorhanden.</p>}
         </div>
       </div>
 

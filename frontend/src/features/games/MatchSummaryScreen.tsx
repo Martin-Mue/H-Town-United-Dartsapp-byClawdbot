@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, BarChart3, Download } from 'lucide-react';
+import { Trophy, BarChart3, Download, Copy } from 'lucide-react';
 import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
 
 type HistoryEntry = {
@@ -68,6 +68,38 @@ export function MatchSummaryScreen() {
     URL.revokeObjectURL(link.href);
   };
 
+  const exportMarkdown = () => {
+    const lines = [
+      `# Match Report ${lastMatch?.id ?? ''}`,
+      `- Sieger: ${lastMatch?.winnerName ?? '—'}`,
+      `- Modus: ${lastMatch?.mode ?? '—'}`,
+      `- Ergebnis: ${lastMatch?.resultLabel ?? '—'}`,
+      '',
+      '## Leg-Ergebnisse',
+      ...(lastMatch?.legResults ?? []).map((l) => `- Leg ${l.legNumber}: ${l.winnerDisplayName} · ${l.dartsUsedByWinner} Darts / ${l.turnsByWinner} Turns`),
+      '',
+      '## Spieler-KPI',
+      ...(lastMatch?.playerMatchStats ?? []).map((r) => `- ${r.displayName}: First-9 ${r.first9Average}, Match Ø ${r.matchAverage}, Checkout ${r.successfulCheckouts}/${r.checkoutAttempts}`),
+    ].join('\n');
+
+    const blob = new Blob([lines], { type: 'text/markdown' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'match-report.md';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const copyShareSummary = async () => {
+    const share = `Match ${lastMatch?.id ?? ''} | Sieger: ${lastMatch?.winnerName ?? '—'} | Ergebnis: ${lastMatch?.resultLabel ?? '—'}`;
+    try {
+      await navigator.clipboard.writeText(share);
+    } catch {
+      // ignore clipboard errors
+    }
+  };
+
+
   return (
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <div className="hero-gradient rounded-2xl border soft-border p-4">
@@ -123,12 +155,18 @@ export function MatchSummaryScreen() {
         <AverageTrendChart values={trendValues} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button onClick={exportSummary} className="rounded-xl bg-sky-400 p-3 font-semibold text-slate-900 flex items-center justify-center gap-2">
-          <Download size={14} /> Export
+          <Download size={14} /> JSON
         </button>
-        <Link to={backTarget} className="rounded-xl bg-slate-800 p-3 text-center">{backTarget === '/tournaments' ? 'Zurück zum Turnier' : 'Zu Statistiken'}</Link>
+        <button onClick={exportMarkdown} className="rounded-xl bg-slate-700 p-3 font-semibold flex items-center justify-center gap-2">
+          <Download size={14} /> Markdown
+        </button>
+        <button onClick={() => void copyShareSummary()} className="rounded-xl bg-slate-700 p-3 font-semibold flex items-center justify-center gap-2">
+          <Copy size={14} /> Teilen
+        </button>
       </div>
+      <Link to={backTarget} className="block rounded-xl bg-slate-800 p-3 text-center">{backTarget === '/tournaments' ? 'Zurück zum Turnier' : 'Zu Statistiken'}</Link>
     </section>
   );
 }
