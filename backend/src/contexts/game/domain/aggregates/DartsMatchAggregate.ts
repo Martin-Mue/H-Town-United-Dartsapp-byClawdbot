@@ -66,7 +66,7 @@ export class DartsMatchAggregate extends AggregateRoot {
   }
 
   /** Applies one turn and enforces bust/final-dart checkout constraints for x01 modes. */
-  public registerTurn(points: number, finalDartMultiplier: 1 | 2 | 3): void {
+  public registerTurn(points: number, finalDartMultiplier: 1 | 2 | 3, dartsUsed: 1 | 2 | 3 = 3): void {
     if (this.winnerPlayerId) return;
     if (this.configuration.mode === 'CRICKET') return;
 
@@ -80,7 +80,7 @@ export class DartsMatchAggregate extends AggregateRoot {
 
     if (remaining === 0) player.checkoutAttempts += 1;
 
-    player.applyTurn(points);
+    player.applyTurn(points, dartsUsed);
 
     if (remaining === 0) {
       player.successfulCheckouts += 1;

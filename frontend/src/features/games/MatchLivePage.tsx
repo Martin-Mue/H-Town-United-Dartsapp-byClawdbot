@@ -382,8 +382,10 @@ export function MatchLivePage() {
           return;
         }
 
-        turnScoreForStats = pendingCricket.reduce((sum, item) => sum + Math.min(60, item.targetNumber * item.multiplier), 0);
+        const beforeCricket = state.players.find((p) => p.playerId === activeBefore)?.cricketScore ?? 0;
         nextState = await apiClient.registerCricketVisit(nextState.matchId, { throws: pendingCricket });
+        const afterCricket = nextState.players.find((p) => p.playerId === activeBefore)?.cricketScore ?? beforeCricket;
+        turnScoreForStats = Math.max(0, afterCricket - beforeCricket);
       } else {
         if (!quickEntryMode && pendingX01.length === 0) {
           setErrorMessage('Bitte bis zu 3 Darts hinzufügen.');
@@ -398,6 +400,7 @@ export function MatchLivePage() {
         nextState = await apiClient.registerTurn(nextState.matchId, {
           points: totalPoints,
           finalDartMultiplier,
+          dartsUsed: quickEntryMode ? 3 : Math.max(1, Math.min(3, pendingX01.length)) as 1 | 2 | 3,
         });
       }
 

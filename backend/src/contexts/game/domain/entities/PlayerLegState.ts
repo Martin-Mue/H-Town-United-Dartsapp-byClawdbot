@@ -19,10 +19,10 @@ export class PlayerLegState {
   }
 
   /** Applies a valid non-bust turn result to leg state metrics. */
-  public applyTurn(points: number): void {
+  public applyTurn(points: number, dartsUsed: 1 | 2 | 3 = 3): void {
     this.score -= points;
     this.totalScored += points;
-    this.dartsThrown += 3;
+    this.dartsThrown += dartsUsed;
     this.highestTurnScore = Math.max(this.highestTurnScore, points);
   }
 

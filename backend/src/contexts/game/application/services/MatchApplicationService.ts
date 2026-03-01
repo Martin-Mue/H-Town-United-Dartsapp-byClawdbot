@@ -52,7 +52,7 @@ export class MatchApplicationService {
     if (!match) throw new Error('Match was not found.');
 
     const previousWinner = match.getWinnerPlayerId();
-    match.registerTurn(request.points, request.finalDartMultiplier);
+    match.registerTurn(request.points, request.finalDartMultiplier, request.dartsUsed ?? 3);
     this.applyEloIfMatchCompleted(match, previousWinner);
 
     await this.matchRepository.save(match);

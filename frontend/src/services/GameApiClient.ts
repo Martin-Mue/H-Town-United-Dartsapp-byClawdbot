@@ -57,7 +57,7 @@ export class GameApiClient {
   /** Registers one x01 turn and returns latest match state. */
   public async registerTurn(
     matchId: string,
-    payload: { points: number; finalDartMultiplier: 1 | 2 | 3 },
+    payload: { points: number; finalDartMultiplier: 1 | 2 | 3; dartsUsed?: 1 | 2 | 3 },
   ): Promise<MatchStateDto> {
     const response = await fetch(`${this.baseUrl}/api/game/matches/${matchId}/turns`, {
       method: 'POST',

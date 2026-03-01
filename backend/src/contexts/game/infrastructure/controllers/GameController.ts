@@ -44,6 +44,11 @@ export class GameController {
         .object({
           points: z.number().int().min(0).max(180),
           finalDartMultiplier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+          dartsUsed: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+        })
+        .refine((value) => value.points <= ((value.dartsUsed ?? 3) * 60), {
+          message: 'Points exceed maximum for darts used.',
+          path: ['points'],
         })
         .parse(request.body);
 
@@ -51,6 +56,7 @@ export class GameController {
         matchId: params.matchId,
         points: body.points,
         finalDartMultiplier: body.finalDartMultiplier,
+        dartsUsed: body.dartsUsed,
       });
       return reply.code(200).send(state);
     });
