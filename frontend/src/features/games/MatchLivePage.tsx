@@ -89,6 +89,7 @@ export function MatchLivePage() {
   const [autoVisitLoopEnabled, setAutoVisitLoopEnabled] = useState(false);
   const [calibrationQuality, setCalibrationQuality] = useState<string | null>(null);
   const [lastDetectedVisit, setLastDetectedVisit] = useState<Array<{ points: number; multiplier: 1 | 2 | 3; targetNumber?: 15 | 16 | 17 | 18 | 19 | 20 | 25 }> | null>(null);
+  const [autoLoopFailures, setAutoLoopFailures] = useState(0);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');

@@ -170,13 +170,16 @@ export async function createApp(): Promise<FastifyInstance> {
       ? [{ targetNumber: 20, multiplier: 1 as const, points: 20 }, { targetNumber: 19, multiplier: 1 as const, points: 19 }, { targetNumber: 18, multiplier: 1 as const, points: 18 }]
       : [{ points: 60, multiplier: 3 as const }, { points: 45, multiplier: 3 as const }, { points: 20, multiplier: 1 as const }];
 
+    const confidence = Number((0.68 + Math.random() * 0.29).toFixed(2));
+    const requiresManualReview = confidence < 0.78;
+
     pendingDetectedVisits.set(body.matchId, generated);
     return {
       matchId: body.matchId,
       boardState: 'DARTS_PRESENT',
       throws: generated,
-      confidence: 0.84,
-      requiresManualReview: false,
+      confidence,
+      requiresManualReview,
     };
   });
 
