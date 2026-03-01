@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AverageTrendChart } from '../../components/analytics/AverageTrendChart';
+import { ThrowHeatmapGrid } from '../../components/analytics/ThrowHeatmapGrid';
 import { computePlayerRankingStats, sortByMetric, type HistoryEntry, type ManagedPlayer, type RankingMetric } from './rankingUtils';
 
 type RankingEntry = { playerId: string; rating: number };
@@ -20,6 +22,9 @@ export function StatisticsPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [filter, setFilter] = useState<RankingMetric>('ELO');
   const [error, setError] = useState<string | null>(null);
+  const [modeFilter, setModeFilter] = useState<'all' | 'X01_301' | 'X01_501' | 'CRICKET'>('all');
+  const [compareA, setCompareA] = useState<string>('');
+  const [compareB, setCompareB] = useState<string>('');
 
   const appSettings = useMemo<AppSettings>(() => {
     try {
@@ -57,6 +62,50 @@ export function StatisticsPage() {
     }
   }, []);
 
+
+  const filteredHistory = useMemo(() => {
+    if (modeFilter === 'all') return history;
+    return history.filter((h) => h.mode === modeFilter);
+  }, [history, modeFilter]);
+
+  const comparePlayers = useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of filteredHistory) for (const p of m.players) ids.add(p.id);
+    const arr = Array.from(ids);
+    return arr.map((id) => ({ id, name: localPlayers.find((p) => p.id === id)?.displayName ?? id }));
+  }, [filteredHistory, localPlayers]);
+
+  const compareTrend = useMemo(() => {
+    const build = (pid: string) => {
+      if (!pid) return [] as number[];
+      return [...filteredHistory]
+        .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime())
+        .map((m) => {
+          const turns = m.playerTurnScores?.[pid] ?? [];
+          if (turns.length === 0) return null;
+          return Number((turns.reduce((x, y) => x + y, 0) / turns.length).toFixed(1));
+        })
+        .filter((v): v is number => v !== null)
+        .slice(-12);
+    };
+    return { a: build(compareA), b: build(compareB) };
+  }, [filteredHistory, compareA, compareB]);
+
+  const segmentHeat = useMemo(() => {
+    const aggregate = (pid: string) => {
+      const segments: Record<string, number> = {};
+      const doubles: Record<string, number> = {};
+      for (const m of filteredHistory) {
+        const stats = m.playerSegmentStats?.[pid];
+        if (!stats) continue;
+        for (const [k, v] of Object.entries(stats.segments)) segments[k] = (segments[k] ?? 0) + v;
+        for (const [k, v] of Object.entries(stats.doubles)) doubles[k] = (doubles[k] ?? 0) + v;
+      }
+      return { segments, doubles };
+    };
+    return { a: aggregate(compareA), b: aggregate(compareB) };
+  }, [filteredHistory, compareA, compareB]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -82,18 +131,18 @@ export function StatisticsPage() {
   }, []);
 
   const rankingRows = useMemo(() => {
-    const rows = computePlayerRankingStats(localPlayers, ranking, history, tournaments);
+    const rows = computePlayerRankingStats(localPlayers, ranking, filteredHistory, tournaments);
     return sortByMetric(rows, filter);
-  }, [localPlayers, ranking, history, tournaments, filter]);
+  }, [localPlayers, ranking, filteredHistory, tournaments, filter]);
 
   const completedTournaments = tournaments.filter((t) => t.isCompleted).length;
 
 
   const scoringDistribution = useMemo(() => {
-    const allTurns = history.flatMap((entry) => Object.values(entry.playerTurnScores ?? {}).flat());
+    const allTurns = filteredHistory.flatMap((entry) => Object.values(entry.playerTurnScores ?? {}).flat());
     const countAtLeast = (threshold: number) => allTurns.filter((v) => v >= threshold).length;
     return SCORING_BUCKETS.map((bucket) => ({ bucket, hits: countAtLeast(bucket) }));
-  }, [history]);
+  }, [filteredHistory]);
 
 
   return (
@@ -102,6 +151,17 @@ export function StatisticsPage() {
         <h2 className="text-xl uppercase">Statistiken</h2>
         <p className="text-xs muted-text mt-1">Vereinsweite Auswertung, Ranking und Gamefication 2026.</p>
         <p className="text-[11px] muted-text mt-2">Pressure-Index = Leistung in Drucksituationen (Decider/Finish unter Druck), Skala 0-100.</p>
+      </div>
+
+
+      <div className="rounded-2xl card-bg border soft-border p-3 flex items-center justify-between gap-2 text-xs">
+        <span className="muted-text">Modusfilter</span>
+        <select value={modeFilter} onChange={(e) => setModeFilter(e.target.value as 'all' | 'X01_301' | 'X01_501' | 'CRICKET')} className="rounded bg-slate-800 p-2">
+          <option value="all">Alle</option>
+          <option value="X01_301">301</option>
+          <option value="X01_501">501</option>
+          <option value="CRICKET">Cricket</option>
+        </select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -149,6 +209,45 @@ export function StatisticsPage() {
         </div>
       </div>
 
+
+
+      <div className="rounded-2xl card-bg border soft-border p-4 space-y-3">
+        <h3 className="text-sm uppercase">Spieler-Vergleich & Trend</h3>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <select value={compareA} onChange={(e) => setCompareA(e.target.value)} className="rounded bg-slate-800 p-2">
+            <option value="">Spieler A</option>
+            {comparePlayers.map((p) => <option key={`a-${p.id}`} value={p.id}>{p.name}</option>)}
+          </select>
+          <select value={compareB} onChange={(e) => setCompareB(e.target.value)} className="rounded bg-slate-800 p-2">
+            <option value="">Spieler B</option>
+            {comparePlayers.map((p) => <option key={`b-${p.id}`} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded bg-slate-900/50 p-2">
+            <p className="text-[11px] muted-text mb-1">Trend Spieler A</p>
+            <AverageTrendChart values={compareTrend.a.length > 1 ? compareTrend.a : [0, 0]} />
+          </div>
+          <div className="rounded bg-slate-900/50 p-2">
+            <p className="text-[11px] muted-text mb-1">Trend Spieler B</p>
+            <AverageTrendChart values={compareTrend.b.length > 1 ? compareTrend.b : [0, 0]} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded bg-slate-900/50 p-2">
+            <p className="text-[11px] muted-text mb-1">Segment-Heatmap A</p>
+            <ThrowHeatmapGrid intensity={[[segmentHeat.a.segments['20'] ?? 0, segmentHeat.a.segments['19'] ?? 0, segmentHeat.a.segments['18'] ?? 0, segmentHeat.a.segments['17'] ?? 0],[segmentHeat.a.segments['16'] ?? 0, segmentHeat.a.segments['15'] ?? 0, segmentHeat.a.segments['bull'] ?? 0, segmentHeat.a.segments['bullseye'] ?? 0]]} labels={['20','19','18','17','16','15','Bull','Bullseye']} />
+            <p className="text-[11px] muted-text mt-1">Doppel-Treffer: {Object.values(segmentHeat.a.doubles).reduce((x,y)=>x+y,0)}</p>
+          </div>
+          <div className="rounded bg-slate-900/50 p-2">
+            <p className="text-[11px] muted-text mb-1">Segment-Heatmap B</p>
+            <ThrowHeatmapGrid intensity={[[segmentHeat.b.segments['20'] ?? 0, segmentHeat.b.segments['19'] ?? 0, segmentHeat.b.segments['18'] ?? 0, segmentHeat.b.segments['17'] ?? 0],[segmentHeat.b.segments['16'] ?? 0, segmentHeat.b.segments['15'] ?? 0, segmentHeat.b.segments['bull'] ?? 0, segmentHeat.b.segments['bullseye'] ?? 0]]} labels={['20','19','18','17','16','15','Bull','Bullseye']} />
+            <p className="text-[11px] muted-text mt-1">Doppel-Treffer: {Object.values(segmentHeat.b.doubles).reduce((x,y)=>x+y,0)}</p>
+          </div>
+        </div>
+      </div>
 
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Scoring-Verteilung (persistente Matchdaten)</h3>

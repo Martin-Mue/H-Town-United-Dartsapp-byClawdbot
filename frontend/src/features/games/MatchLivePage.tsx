@@ -29,6 +29,7 @@ type HistoryEntry = {
     bestLegDarts: number | null;
     worstLegDarts: number | null;
   }>;
+  playerSegmentStats?: Record<string, { segments: Record<string, number>; doubles: Record<string, number> }>;
 };
 
 type ManagedPlayer = {
@@ -53,7 +54,7 @@ export function MatchLivePage() {
   const [multiplier, setMultiplier] = useState<1 | 2 | 3>(1);
   const [selected, setSelected] = useState<number>(20);
   const [cricketTarget, setCricketTarget] = useState<15 | 16 | 17 | 18 | 19 | 20 | 25>(20);
-  const [pendingX01, setPendingX01] = useState<Array<{ points: number; multiplier: 1 | 2 | 3; label: string }>>([]);
+  const [pendingX01, setPendingX01] = useState<Array<{ points: number; multiplier: 1 | 2 | 3; label: string; segment: number }>>([]);
   const [pendingCricket, setPendingCricket] = useState<Array<{ targetNumber: 15 | 16 | 17 | 18 | 19 | 20 | 25; multiplier: 1 | 2 | 3 }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
@@ -64,6 +65,7 @@ export function MatchLivePage() {
   const [matchSettings, setMatchSettings] = useState<{ bullOffEnabled?: boolean; bullOffLimitType?: 'turns' | 'darts'; bullOffLimitValue?: number }>({});
   const [preMatchSeen, setPreMatchSeen] = useState(false);
   const [playerTurnScores, setPlayerTurnScores] = useState<Record<string, number[]>>({});
+  const [playerSegmentStats, setPlayerSegmentStats] = useState<Record<string, { segments: Record<string, number>; doubles: Record<string, number> }>>({});
   const [cameraDetection, setCameraDetection] = useState<{ turnId: string; points: number; multiplier: 1 | 2 | 3; confidence: number; requiresManualReview: boolean } | null>(null);
   const [cameraReviewDraft, setCameraReviewDraft] = useState<{ turnId: string; points: number; multiplier: 1 | 2 | 3; confidence: number } | null>(null);
   const [quickEntryMode, setQuickEntryMode] = useState(false);
@@ -252,7 +254,7 @@ export function MatchLivePage() {
   const replacePendingDart = (index: number) => {
     const points = Math.min(60, selected === 50 ? 50 : selected * multiplier);
     const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${multiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${multiplier}`;
-    setPendingX01((prev) => prev.map((dart, i) => (i === index ? { points, multiplier, label } : dart)));
+    setPendingX01((prev) => prev.map((dart, i) => (i === index ? { points, multiplier, label, segment: selected } : dart)));
   };
 
 
@@ -286,7 +288,7 @@ export function MatchLivePage() {
     const effectiveMultiplier: 1 | 2 | 3 = selected === 50 ? 1 : selected === 25 ? (multiplier === 3 ? 2 : multiplier) : multiplier;
     const points = Math.min(60, selected === 50 ? 50 : selected * effectiveMultiplier);
     const label = selected === 0 ? 'Miss' : selected === 25 ? `Bull x${effectiveMultiplier}` : selected === 50 ? 'Bullseye' : `${selected} x${effectiveMultiplier}`;
-    setPendingX01((prev) => [...prev, { points, multiplier: effectiveMultiplier, label }]);
+    setPendingX01((prev) => [...prev, { points, multiplier: effectiveMultiplier, label, segment: selected }]);
     setErrorMessage(null);
     setCameraStatus('waiting_for_pull');
   };
@@ -304,7 +306,7 @@ export function MatchLivePage() {
     setPendingCricket([]);
   };
 
-  const saveHistory = (next: MatchStateDto, turnScoresOverride?: Record<string, number[]>) => {
+  const saveHistory = (next: MatchStateDto, turnScoresOverride?: Record<string, number[]>, segmentStatsOverride?: Record<string, { segments: Record<string, number>; doubles: Record<string, number> }>) => {
     if (!next.winnerPlayerId) return;
     const winner = next.players.find((p) => p.playerId === next.winnerPlayerId);
     const winnerScore = next.scoreboard.find((s) => s.playerId === next.winnerPlayerId);
@@ -348,6 +350,7 @@ export function MatchLivePage() {
       playerTurnScores: turnScores,
       legResults: next.legResults,
       playerMatchStats,
+      playerSegmentStats: segmentStatsOverride ?? playerSegmentStats,
     };
 
     try {
@@ -477,6 +480,23 @@ export function MatchLivePage() {
       }
 
       const updatedTurnScores = { ...playerTurnScores, [activeBefore]: [...(playerTurnScores[activeBefore] ?? []), turnScoreForStats] };
+      let updatedSegmentStats = playerSegmentStats;
+      if (!isCricket && !quickEntryMode && pendingX01.length > 0) {
+        const prev = playerSegmentStats[activeBefore] ?? { segments: {}, doubles: {} };
+        const nextSegments = { ...prev.segments };
+        const nextDoubles = { ...prev.doubles };
+        for (const dart of pendingX01) {
+          const segKey = dart.segment === 50 ? 'bullseye' : dart.segment === 25 ? 'bull' : String(dart.segment);
+          nextSegments[segKey] = (nextSegments[segKey] ?? 0) + 1;
+          if (dart.multiplier === 2) nextDoubles[segKey] = (nextDoubles[segKey] ?? 0) + 1;
+        }
+        updatedSegmentStats = {
+          ...playerSegmentStats,
+          [activeBefore]: { segments: nextSegments, doubles: nextDoubles },
+        };
+        setPlayerSegmentStats(updatedSegmentStats);
+      }
+
       setState(nextState);
       setPlayerTurnScores(updatedTurnScores);
       setTurnCounter((t) => t + 1);
@@ -485,7 +505,7 @@ export function MatchLivePage() {
       if (quickEntryMode) setQuickTurnPoints('');
 
       if (nextState.winnerPlayerId) {
-        saveHistory(nextState, updatedTurnScores);
+        saveHistory(nextState, updatedTurnScores, updatedSegmentStats);
         await syncTournamentResultIfNeeded(nextState);
         navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
       }
@@ -506,7 +526,7 @@ export function MatchLivePage() {
     if (!state) return;
     const next = await apiClient.registerBullOffWinner(state.matchId, { winnerPlayerId });
     setState(next);
-    saveHistory(next, playerTurnScores);
+    saveHistory(next, playerTurnScores, playerSegmentStats);
     await syncTournamentResultIfNeeded(next);
     navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
   };
@@ -746,7 +766,7 @@ export function MatchLivePage() {
                 <button
                   onClick={() => {
                     const label = `${Math.max(0, Math.round(cameraDetection.points / Math.max(1, cameraDetection.multiplier)))} x${cameraDetection.multiplier}`;
-                    setPendingX01((prev) => prev.length >= 3 ? prev : [...prev, { points: cameraDetection.points, multiplier: cameraDetection.multiplier, label }]);
+                    setPendingX01((prev) => prev.length >= 3 ? prev : [...prev, { points: cameraDetection.points, multiplier: cameraDetection.multiplier, label, segment: Math.max(0, Math.round(cameraDetection.points / Math.max(1, cameraDetection.multiplier))) }]);
                   }}
                   className="mt-1 rounded bg-slate-800 px-2 py-1"
                 >Vorschlag übernehmen</button>
