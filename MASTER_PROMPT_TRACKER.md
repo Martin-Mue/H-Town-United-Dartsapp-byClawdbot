@@ -74,29 +74,32 @@ Arbeitsmodus: iterativ mit Live-Feedback
 ---
 
 ## Aktive Reihenfolge (neu priorisiert)
-1. Block 3: Kamera/Erkennung als Kernfunktion (lokal + remote + automatisierter Turn)
-2. Block 1: Spiellogik final strict
-3. Block 2: Turnier-UX + Bracket + Turnierparität
+1. Statistik-Sprint (DartCounter-Gap 1–5 vollständig)
+2. Kamera-Sprint (Dartsmind-Gap 1–5 vollständig)
+3. Block 1: Spiellogik final strict
+4. Block 2: Turnier-UX + Bracket + Turnierparität
 
 ---
 
 ## Nächste konkreten Arbeitspakete
 
-### Paket 1 (Block 1)
-- Cricket Kantenfälle vollständig testen (Marks/Punkte/Closure)
-- x01 Kantenfälle End-to-End prüfen
-- Random Cricket + weitere Modi in Setup und Logik aufnehmen
-- Ergebnis: stabiler Modus-Regressionstest + konsistentes Verhalten
+### Statistik-Sprint (DartCounter 1–5)
+- [ ] Tiefe Matchreports: First-9, Avg je Leg/Set, Checkout Attempts/Hits, Best/Worst Leg
+- [ ] Trend- und Vergleichsansichten: Player-vs-Player, Modus-spezifische Formkurven
+- [ ] Segment-/Doppel-Heatmaps statt nur Score-Buckets
+- [ ] KPI-Harmonisierung über Match/Turnier/Profil/Training
+- [ ] Export/Share-Reports (strukturiert, inkl. Leg-Details)
 
-### Paket 2 (Block 2)
-- Turniermatch voll auf Einzelspielniveau (Gegenüberstellung/Stats)
-- Cricket-Turnieransicht weiter vereinheitlichen
-- Bracket-Connector finalisieren
+### Kamera-Sprint (Dartsmind 1–5)
+- [ ] Auto-Loop: Detect -> Confirm/Auto -> Dart-Entnahme -> Turn Commit
+- [ ] Board-Kalibrierung pro Session inkl. Qualitätsanzeige
+- [ ] Visit-Erkennung (1–3 Darts) als Block
+- [ ] Robustheit bei Licht/Occlusion + Confidence-Regeln
+- [ ] Remote-Livefeeds (WebRTC) inkl. Latenz-/Verbindungsstatus
 
-### Paket 3 (Block 3)
-- Kamera-Modus in allen Kontexten verfügbar
-- Erkennung + Review-UX robust machen
-- Kamera-Analyse in Statistiken überführen
+### Danach
+- [ ] Block 1: restliche Spiellogik-Edgecases finalisieren
+- [ ] Block 2: Turnier-UX/Bracket-Parität finalisieren
 
 ---
 
