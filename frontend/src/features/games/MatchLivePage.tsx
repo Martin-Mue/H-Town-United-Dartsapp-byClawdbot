@@ -80,6 +80,8 @@ export function MatchLivePage() {
   const [lastLegSnapshot, setLastLegSnapshot] = useState('');
   const [showPreMatchTips, setShowPreMatchTips] = useState(false);
   const [cameraStatus, setCameraStatus] = useState<'disconnected' | 'connected' | 'calibrating' | 'detecting' | 'waiting_for_pull'>('disconnected');
+  const [isMatchPaused, setIsMatchPaused] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [remoteStatus, setRemoteStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('idle');
@@ -110,6 +112,13 @@ export function MatchLivePage() {
       setMatchSettings({});
     }
   }, [matchId]);
+
+  useEffect(() => {
+    if (!matchId) return;
+    const raw = window.localStorage.getItem(`htown-match-paused-${matchId}`);
+    setIsMatchPaused(raw === '1');
+  }, [matchId]);
+
 
 
 
@@ -471,6 +480,7 @@ export function MatchLivePage() {
       videoRef.current.srcObject = null;
     }
     window.localStorage.removeItem('htown-active-match-id');
+    window.localStorage.removeItem(`htown-match-paused-${matchId}`);
   };
 
   const syncTournamentResultIfNeeded = async (next: MatchStateDto) => {
@@ -552,6 +562,7 @@ export function MatchLivePage() {
   };
   const submitTurn = async () => {
     if (!state) return;
+    if (isMatchPaused) { setErrorMessage('Match ist pausiert. Erst fortsetzen.'); return; }
     if (bullOffRequired) { setErrorMessage('Ausbullen erforderlich. Bitte Sieger per Bull-Off festlegen.'); return; }
     setSubmitting(true);
     setErrorMessage(null);
@@ -761,6 +772,25 @@ export function MatchLivePage() {
       )}
 
       <p className="primary-text text-sm font-semibold">{active?.displayName} wirft (3 Darts)</p>
+
+      <div className="w-full max-w-xl rounded-lg border soft-border bg-slate-900/60 p-2 text-xs">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => { const next = !isMatchPaused; setIsMatchPaused(next); window.localStorage.setItem(`htown-match-paused-${matchId}`, next ? '1' : '0'); }} className="rounded bg-amber-800 px-2 py-1">{isMatchPaused ? 'Match fortsetzen' : 'Match pausieren'}</button>
+          <button onClick={() => setShowEndConfirm(true)} className="rounded bg-red-800 px-2 py-1">Match abbrechen/beenden</button>
+        </div>
+        {isMatchPaused && <p className="mt-1 text-amber-200">Match ist pausiert. Keine Turn-Eingaben möglich.</p>}
+      </div>
+
+      {showEndConfirm && (
+        <div className="w-full max-w-xl rounded-lg border border-red-400/40 bg-red-950/50 p-2 text-xs space-y-2">
+          <p>Willst du das laufende Match wirklich beenden/abbrechen?</p>
+          <div className="flex gap-2">
+            <button onClick={() => { endMatchSession(); navigate('/'); }} className="rounded bg-red-700 px-2 py-1">Ja, beenden</button>
+            <button onClick={() => setShowEndConfirm(false)} className="rounded bg-slate-800 px-2 py-1">Zurück</button>
+          </div>
+        </div>
+      )}
+
       {leadInfo && (
         <div className="w-full max-w-xl rounded-lg border soft-border bg-slate-900/60 p-2 text-xs">
           <p>{leadInfo.setLead} · {leadInfo.legLead}</p>
