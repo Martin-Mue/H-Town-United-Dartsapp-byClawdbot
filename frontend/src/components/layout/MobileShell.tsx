@@ -9,6 +9,7 @@ import { BottomNavigation } from '../navigation/BottomNavigation';
  */
 export function MobileShell({ children }: PropsWithChildren) {
   const { mode, toggleMode } = useThemeMode();
+  const activeMatchId = typeof window !== 'undefined' ? window.localStorage.getItem('htown-active-match-id') : null;
 
   return (
     <div className="min-h-full app-bg app-text pb-[calc(84px+env(safe-area-inset-bottom))]">
@@ -38,7 +39,14 @@ export function MobileShell({ children }: PropsWithChildren) {
           </div>
         </div>
       </header>
-      <main className="px-4 py-4">{children}</main>
+      <main className="px-4 py-4">
+        {activeMatchId && (
+          <Link to={`/match/${activeMatchId}`} className="mb-3 block rounded-lg border border-amber-300/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-100">
+            Aktives Spiel läuft. Erst im Match beenden, bevor du in andere Menüs wechselst.
+          </Link>
+        )}
+        {children}
+      </main>
       <BottomNavigation />
     </div>
   );

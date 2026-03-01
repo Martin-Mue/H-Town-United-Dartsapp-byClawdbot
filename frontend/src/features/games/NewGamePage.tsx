@@ -42,8 +42,16 @@ export function NewGamePage() {
     return MODE_RULES.find((r) => r.id === 'x01-501');
   }, [mode]);
 
+  const existingActiveMatchId = typeof window !== 'undefined' ? window.localStorage.getItem('htown-active-match-id') : null;
+
   const createMatch = async () => {
     try {
+      if (existingActiveMatchId) {
+        setErrorMessage('Es läuft bereits ein Spiel. Bitte erst im Match sauber beenden.');
+        navigate(`/match/${existingActiveMatchId}`);
+        return;
+      }
+
       setIsSubmitting(true);
       setErrorMessage(null);
 
@@ -72,7 +80,7 @@ export function NewGamePage() {
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <article className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Spiel erstellen</h2>
-        <p className="text-xs muted-text mt-1">Wähle Modus, Spieler und Checkout-Regeln.</p>
+        <p className="text-xs muted-text mt-1">Wähle Modus, Spieler und Regeln in 3 Schritten.</p>
       </article>
 
       <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">

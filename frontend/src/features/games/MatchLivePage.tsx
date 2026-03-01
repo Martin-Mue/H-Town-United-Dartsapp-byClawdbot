@@ -93,6 +93,7 @@ export function MatchLivePage() {
 
   useEffect(() => {
     if (!matchId) return;
+    window.localStorage.setItem('htown-active-match-id', matchId);
     apiClient.getMatch(matchId).then(setState).catch(() => setErrorMessage('Match konnte nicht geladen werden.'));
   }, [matchId]);
 
@@ -305,8 +306,10 @@ export function MatchLivePage() {
       const calibration = await apiClient.calibrateBoardCamera({ matchId: state?.matchId ?? matchId });
       setCalibrationQuality(calibration.quality);
       setTimeout(() => setCameraStatus('waiting_for_pull'), 800);
-    } catch {
-      setCameraHint('Kamera konnte nicht gestartet werden. Browser-Berechtigung prüfen.');
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      setCameraHint(`Kamera konnte nicht gestartet werden: ${reason}`);
+      setErrorMessage('Kamera-Start fehlgeschlagen. Bitte Kamera-Berechtigung im Browser erlauben.');
     }
   };
 
@@ -388,6 +391,15 @@ export function MatchLivePage() {
     } catch {
       // ignore storage errors
     }
+  };
+
+  const endMatchSession = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
+    }
+    window.localStorage.removeItem('htown-active-match-id');
   };
 
   const syncTournamentResultIfNeeded = async (next: MatchStateDto) => {
@@ -534,7 +546,9 @@ export function MatchLivePage() {
       if (nextState.winnerPlayerId) {
         saveHistory(nextState, updatedTurnScores, updatedSegmentStats);
         await syncTournamentResultIfNeeded(nextState);
-        navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
+        endMatchSession();
+        endMatchSession();
+    navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
       }
     } finally {
       setSubmitting(false);
@@ -555,6 +569,7 @@ export function MatchLivePage() {
     setState(next);
     saveHistory(next, playerTurnScores, playerSegmentStats);
     await syncTournamentResultIfNeeded(next);
+    endMatchSession();
     navigate(`/match-summary${tournamentId ? '?back=tournaments' : ''}`);
   };
 
