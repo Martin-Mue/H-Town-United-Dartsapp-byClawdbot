@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Search, UserPlus, X, Sparkles, Upload, Camera, CameraOff, Loader2 } from 'lucide-react';
+import { Search, UserPlus, X, Sparkles, Upload, Camera, CameraOff, Loader2, Pencil } from 'lucide-react';
 
 type CheckoutMode = 'SINGLE_OUT' | 'DOUBLE_OUT' | 'MASTER_OUT';
 type MembershipStatus = 'CLUB_MEMBER' | 'TRIAL';
@@ -72,7 +72,7 @@ async function generateGenericDartAvatar(displayName: string, seed = 'htown', st
     const blob = await response.blob();
     return await blobToDataUrl(blob);
   } catch {
-    return '';
+    return buildFallbackAvatar(displayName, style);
   }
 }
 
@@ -162,6 +162,7 @@ export function PlayersPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadTarget, setUploadTarget] = useState<'modal' | string>('modal');
   const [avatarStyleInput, setAvatarStyleInput] = useState<'REALISTIC' | 'COMIC' | 'NEON'>('COMIC');
+  const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
 
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
@@ -171,6 +172,64 @@ export function PlayersPage() {
 
   const updatePlayerAvatar = (playerId: string, updater: (player: ManagedPlayer) => ManagedPlayer) => {
     persist(players.map((p) => (p.id === playerId ? updater(p) : p)));
+  };
+
+
+  const startEditPlayer = (player: ManagedPlayer) => {
+    setEditPlayerId(player.id);
+    setNameInput(player.displayName);
+    setModeInput(player.preferredCheckoutMode);
+    setStatusInput(player.membershipStatus);
+    setNicknameInput(player.nickname ?? '');
+    setThrowingArmInput(player.throwingArm ?? 'RIGHT');
+    setGripStyleInput(player.gripStyle ?? '');
+    setDartWeightInput(player.dartWeightGrams ? String(player.dartWeightGrams) : '');
+    setSeasonsPlayedInput(String(player.seasonsPlayed ?? 0));
+    setPronunciationInput(player.nicknamePronunciation ?? '');
+    setAnnouncerStyleInput(player.announcerStyle ?? 'ARENA');
+    setIntroAnnouncementEnabledInput(player.introAnnouncementEnabled ?? true);
+    setAvatarInput(player.avatarUrl ?? '');
+    setSourcePhotoInput(player.avatarSourcePhoto ?? '');
+    setAvatarStyleInput(player.avatarStyle ?? 'COMIC');
+    setShowModal(true);
+  };
+
+  const saveEditedPlayer = async () => {
+    if (!editPlayerId) return;
+    const trimmedName = nameInput.trim();
+    if (!trimmedName) return;
+
+    let finalAvatar = avatarInput;
+    if (!finalAvatar) {
+      finalAvatar = sourcePhotoInput
+        ? await generateProAvatarFromSourceImage(sourcePhotoInput, avatarStyleInput)
+        : await generateGenericDartAvatar(trimmedName, `edit-${editPlayerId}`, avatarStyleInput);
+    }
+
+    persist(players.map((p) => p.id === editPlayerId ? {
+      ...p,
+      displayName: trimmedName,
+      membershipStatus: statusInput,
+      preferredCheckoutMode: modeInput,
+      nickname: nicknameInput.trim() || undefined,
+      throwingArm: throwingArmInput,
+      gripStyle: gripStyleInput.trim() || undefined,
+      dartWeightGrams: dartWeightInput ? Number(dartWeightInput) : undefined,
+      seasonsPlayed: Number(seasonsPlayedInput || 0),
+      nicknamePronunciation: resolvePronunciation(nicknameInput, pronunciationInput, pronunciationPreset),
+      announcerStyle: announcerStyleInput,
+      introAnnouncementEnabled: introAnnouncementEnabledInput,
+      avatarUrl: finalAvatar || p.avatarUrl,
+      avatarSourcePhoto: sourcePhotoInput || p.avatarSourcePhoto,
+      avatarKind: sourcePhotoInput ? 'PHOTO_STYLIZED' : (p.avatarKind ?? 'GENERIC_AI'),
+      avatarStyle: avatarStyleInput,
+    } : p));
+
+    stopCamera();
+    setEditPlayerId(null);
+    setShowModal(false);
+    setSourcePhotoInput('');
+    setAvatarInput('');
   };
 
   const filtered = useMemo(() => players.filter((p) => p.displayName.toLowerCase().includes(query.toLowerCase())), [players, query]);
@@ -359,6 +418,9 @@ export function PlayersPage() {
                 <p className="font-semibold truncate">{player.displayName}{player.nickname ? ` "${player.nickname}"` : ''}</p>
                 <p className="text-xs muted-text">Ø {player.currentAverage} · Checkout {player.checkoutPercentage}% · {player.total180s}x 180</p>
                 <div className="mt-1 flex flex-wrap gap-2">
+                  <button onClick={() => startEditPlayer(player)} className="text-[11px] text-slate-200 flex items-center gap-1">
+                    <Pencil size={12} /> Bearbeiten
+                  </button>
                   <button onClick={() => generateAvatarForPlayer(player.id, player.displayName)} className="text-[11px] primary-text flex items-center gap-1">
                     <Sparkles size={12} /> KI-Bild aktualisieren
                   </button>
@@ -386,8 +448,8 @@ export function PlayersPage() {
         <div className="fixed inset-0 z-40 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl border soft-border card-bg p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl uppercase">Neues Mitglied</h3>
-              <button onClick={() => { stopCamera(); setShowModal(false); setSourcePhotoInput(''); setAvatarInput(''); }}><X size={16} /></button>
+              <h3 className="text-xl uppercase">{editPlayerId ? 'Mitglied bearbeiten' : 'Neues Mitglied'}</h3>
+              <button onClick={() => { stopCamera(); setShowModal(false); setSourcePhotoInput(''); setAvatarInput(''); setEditPlayerId(null); }}><X size={16} /></button>
             </div>
 
             <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Vor- und Nachname" className="w-full rounded-xl bg-slate-800 border border-sky-400/60 p-3" />
@@ -467,7 +529,7 @@ export function PlayersPage() {
               <option value="TRIAL">Schnuppermodus</option>
             </select>
 
-            <button onClick={() => void addPlayer()} className="w-full rounded-xl bg-sky-400 text-slate-900 font-semibold p-3">Mitglied hinzufügen</button>
+            <button onClick={() => void (editPlayerId ? saveEditedPlayer() : addPlayer())} className="w-full rounded-xl bg-sky-400 text-slate-900 font-semibold p-3">{editPlayerId ? 'Änderungen speichern' : 'Mitglied hinzufügen'}</button>
           </div>
         </div>
       )}
@@ -516,7 +578,39 @@ function previewAnnouncement(name: string, nickname: string, pronunciation: stri
   window.speechSynthesis.speak(utterance);
 }
 
+function buildFallbackAvatar(displayName: string, style: 'REALISTIC' | 'COMIC' | 'NEON' = 'COMIC'): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const grad = ctx.createLinearGradient(0, 0, 512, 512);
+  if (style === 'NEON') {
+    grad.addColorStop(0, '#0ea5e9');
+    grad.addColorStop(1, '#d946ef');
+  } else if (style === 'REALISTIC') {
+    grad.addColorStop(0, '#0f172a');
+    grad.addColorStop(1, '#1e3a8a');
+  } else {
+    grad.addColorStop(0, '#334155');
+    grad.addColorStop(1, '#0ea5e9');
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  const initials = displayName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() || 'HT';
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = 'bold 170px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(initials, 256, 256);
+
+  return canvas.toDataURL('image/jpeg', 0.92);
+}
+
 async function fileToDataUrl(file: File): Promise<string> {
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result ?? ''));
