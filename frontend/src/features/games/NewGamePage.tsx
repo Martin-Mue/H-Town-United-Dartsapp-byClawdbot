@@ -27,6 +27,7 @@ export function NewGamePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cameraAssistEnabled, setCameraAssistEnabled] = useState(true);
+  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1);
 
   const clubPlayers = useMemo<ManagedPlayer[]>(() => {
     try {
@@ -43,6 +44,8 @@ export function NewGamePage() {
   }, [mode]);
 
   const existingActiveMatchId = typeof window !== 'undefined' ? window.localStorage.getItem('htown-active-match-id') : null;
+
+  const isSetupComplete = playerOneName.trim().length > 0 && playerTwoName.trim().length > 0;
 
   const createMatch = async () => {
     try {
@@ -83,7 +86,26 @@ export function NewGamePage() {
         <p className="text-xs muted-text mt-1">Wähle Modus, Spieler und Regeln in 3 Schritten.</p>
       </article>
 
-      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
+
+      <div className="card-bg rounded-2xl border soft-border p-3 space-y-2 text-xs">
+        <p className="uppercase muted-text">Setup-Assistent</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((step) => (
+            <button
+              key={`step-${step}`}
+              onClick={() => setSetupStep(step as 1 | 2 | 3)}
+              className={`rounded p-2 ${setupStep === step ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}
+            >
+              Schritt {step}
+            </button>
+          ))}
+        </div>
+        <p className="muted-text">
+          {setupStep === 1 ? '1/3: Modus wählen' : setupStep === 2 ? '2/3: Spieler festlegen' : '3/3: Regeln prüfen & starten'}
+        </p>
+      </div>
+
+      <div className={`card-bg rounded-2xl border soft-border p-4 space-y-3 ${setupStep === 1 ? '' : 'opacity-70'}`}>
         <h3 className="text-sm uppercase flex items-center gap-2"><Target size={14} /> Spielmodus</h3>
         <div className="grid grid-cols-2 gap-2">
           {([
@@ -107,7 +129,7 @@ export function NewGamePage() {
         )}
       </div>
 
-      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
+      <div className={`card-bg rounded-2xl border soft-border p-4 space-y-3 ${setupStep === 2 ? '' : 'opacity-70'}`}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm uppercase">Spieler</h3>
           <button onClick={() => setShowClubPick((v) => !v)} className="rounded-lg bg-slate-800 px-2 py-1 text-xs flex items-center gap-1">
@@ -142,7 +164,7 @@ export function NewGamePage() {
         <input value={playerTwoName} onChange={(e) => setPlayerTwoName(e.target.value)} className="w-full rounded-xl bg-slate-800 p-3" />
       </div>
 
-      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
+      <div className={`card-bg rounded-2xl border soft-border p-4 space-y-3 ${setupStep === 3 ? '' : 'opacity-70'}`}>
         <h3 className="text-sm uppercase flex items-center gap-2"><Trophy size={14} /> Match Modi</h3>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <label className="rounded-xl bg-slate-800 p-3"><span className="muted-text">Legs pro Set</span><input type="number" min={1} max={15} value={legsPerSet} onChange={(e) => setLegsPerSet(Number(e.target.value || 1))} className="mt-1 w-full rounded bg-slate-700 p-2" /></label>
@@ -181,8 +203,13 @@ export function NewGamePage() {
         </button>
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => setSetupStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)} disabled={setupStep === 1} className="rounded-lg bg-slate-800 p-2 text-sm disabled:opacity-40">Zurück</button>
+        <button onClick={() => setSetupStep((s) => Math.min(3, s + 1) as 1 | 2 | 3)} disabled={setupStep === 3} className="rounded-lg bg-slate-800 p-2 text-sm disabled:opacity-40">Weiter</button>
+      </div>
+
       {errorMessage && <p className="rounded-xl bg-red-900/40 p-3 text-sm text-red-100">{errorMessage}</p>}
-      <button onClick={createMatch} disabled={isSubmitting} className="w-full rounded-xl bg-sky-400 p-3 text-slate-900 font-semibold">{isSubmitting ? 'Erstelle Spiel…' : 'Spiel starten'}</button>
+      <button onClick={createMatch} disabled={isSubmitting || setupStep !== 3 || !isSetupComplete} className="w-full rounded-xl bg-sky-400 p-3 text-slate-900 font-semibold disabled:opacity-50">{isSubmitting ? 'Erstelle Spiel…' : 'Spiel starten'}</button>
     </section>
   );
 }
