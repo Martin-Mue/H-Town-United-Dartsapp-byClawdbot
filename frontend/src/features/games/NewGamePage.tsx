@@ -83,27 +83,11 @@ export function NewGamePage() {
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <article className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Spiel erstellen</h2>
-        <p className="text-xs muted-text mt-1">Schritt-für-Schritt durch den Setup-Assistenten.</p>
+        <p className="text-xs muted-text mt-1">Weiter führt zur nächsten Ansicht. Spielstart erst im letzten Schritt.</p>
       </article>
 
+      <p className="text-xs muted-text">Schritt {setupStep} von 3</p>
 
-      <div className="card-bg rounded-2xl border soft-border p-3 space-y-2 text-xs">
-        <p className="uppercase muted-text">Setup-Assistent</p>
-        <div className="grid grid-cols-3 gap-2">
-          {[1, 2, 3].map((step) => (
-            <button
-              key={`step-${step}`}
-              onClick={() => setSetupStep(step as 1 | 2 | 3)}
-              className={`rounded p-2 ${setupStep === step ? 'bg-sky-400 text-slate-900 font-semibold' : 'bg-slate-800'}`}
-            >
-              Schritt {step}
-            </button>
-          ))}
-        </div>
-        <p className="muted-text">
-          {setupStep === 1 ? '1/3: Modus wählen' : setupStep === 2 ? '2/3: Spieler festlegen' : '3/3: Regeln prüfen & starten'}
-        </p>
-      </div>
 
       {setupStep === 1 && (
       <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
@@ -219,7 +203,9 @@ export function NewGamePage() {
       </div>
 
       {errorMessage && <p className="rounded-xl bg-red-900/40 p-3 text-sm text-red-100">{errorMessage}</p>}
-      <button onClick={createMatch} disabled={isSubmitting || setupStep !== 3 || !isSetupComplete} className="w-full rounded-xl bg-sky-400 p-3 text-slate-900 font-semibold disabled:opacity-50">{isSubmitting ? 'Erstelle Spiel…' : 'Spiel starten'}</button>
+      {setupStep === 3 && (
+        <button onClick={createMatch} disabled={isSubmitting || !isSetupComplete} className="w-full rounded-xl bg-sky-400 p-3 text-slate-900 font-semibold disabled:opacity-50">{isSubmitting ? 'Erstelle Spiel…' : 'Spiel starten'}</button>
+      )}
     </section>
   );
 }
