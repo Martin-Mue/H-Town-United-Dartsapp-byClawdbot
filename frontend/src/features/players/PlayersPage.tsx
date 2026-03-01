@@ -25,6 +25,7 @@ type ManagedPlayer = {
   avatarUrl: string;
   avatarSourcePhoto?: string;
   avatarKind?: 'GENERIC_AI' | 'PHOTO_STYLIZED';
+  avatarStyle?: 'REALISTIC' | 'COMIC' | 'NEON';
 };
 
 const STORAGE_KEY = 'htown-players';
@@ -57,8 +58,13 @@ const SEED_PLAYERS: ManagedPlayer[] = [
   { id: 'seed-ben', displayName: 'Ben Albrecht', membershipStatus: 'TRIAL', preferredCheckoutMode: 'DOUBLE_OUT', notes: 'Schnuppermodus, strong on T20 reps.', currentAverage: 54, checkoutPercentage: 25, pressurePerformanceIndex: 57, total180s: 3, avatarUrl: '' },
 ];
 
-async function generateGenericDartAvatar(displayName: string, seed = 'htown'): Promise<string> {
-  const prompt = encodeURIComponent(`stylized fictional darts avatar, comic esports character, H-Town United jersey, no real person, clean face portrait, ${displayName}`);
+async function generateGenericDartAvatar(displayName: string, seed = 'htown', style: 'REALISTIC' | 'COMIC' | 'NEON' = 'COMIC'): Promise<string> {
+  const stylePrompt = style === 'REALISTIC'
+    ? 'stylized fictional darts pro avatar, semi-realistic digital art, no real person'
+    : style === 'NEON'
+      ? 'futuristic neon comic darts avatar, cyber style, no real person'
+      : 'comic esports darts avatar, graphic style, no real person';
+  const prompt = encodeURIComponent(`${stylePrompt}, H-Town United jersey, clean face portrait, ${displayName}`);
   const url = `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&seed=${encodeURIComponent(`${seed}-${displayName}`)}`;
   try {
     const response = await fetch(url);
@@ -70,7 +76,7 @@ async function generateGenericDartAvatar(displayName: string, seed = 'htown'): P
   }
 }
 
-async function generateProAvatarFromSourceImage(sourceDataUrl: string): Promise<string> {
+async function generateProAvatarFromSourceImage(sourceDataUrl: string, style: "REALISTIC" | "COMIC" | "NEON" = "REALISTIC"): Promise<string> {
   const img = await loadImage(sourceDataUrl);
   const canvas = document.createElement('canvas');
   canvas.width = 768;
@@ -84,13 +90,22 @@ async function generateProAvatarFromSourceImage(sourceDataUrl: string): Promise<
   const dx = (canvas.width - drawW) / 2;
   const dy = (canvas.height - drawH) / 2;
 
-  ctx.filter = 'contrast(1.12) saturate(1.15)';
+  const baseFilter = style === 'NEON' ? 'contrast(1.2) saturate(1.35)' : style === 'COMIC' ? 'contrast(1.18) saturate(1.25)' : 'contrast(1.1) saturate(1.12)';
+  ctx.filter = baseFilter;
   ctx.drawImage(img, dx, dy, drawW, drawH);
   ctx.filter = 'none';
 
   const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  grad.addColorStop(0, 'rgba(0,255,210,0.12)');
-  grad.addColorStop(1, 'rgba(0,80,255,0.18)');
+  if (style === 'NEON') {
+    grad.addColorStop(0, 'rgba(0,255,210,0.2)');
+    grad.addColorStop(1, 'rgba(255,0,200,0.22)');
+  } else if (style === 'COMIC') {
+    grad.addColorStop(0, 'rgba(255,180,0,0.14)');
+    grad.addColorStop(1, 'rgba(0,120,255,0.16)');
+  } else {
+    grad.addColorStop(0, 'rgba(0,255,210,0.12)');
+    grad.addColorStop(1, 'rgba(0,80,255,0.18)');
+  }
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -146,6 +161,7 @@ export function PlayersPage() {
   const [cameraOn, setCameraOn] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadTarget, setUploadTarget] = useState<'modal' | string>('modal');
+  const [avatarStyleInput, setAvatarStyleInput] = useState<'REALISTIC' | 'COMIC' | 'NEON'>('COMIC');
 
   const persist = (next: ManagedPlayer[]) => {
     setPlayers(next);
@@ -166,8 +182,8 @@ export function PlayersPage() {
     let finalAvatar = avatarInput;
     if (!finalAvatar) {
       finalAvatar = sourcePhotoInput
-        ? await generateProAvatarFromSourceImage(sourcePhotoInput)
-        : await generateGenericDartAvatar(trimmedName, 'create');
+        ? await generateProAvatarFromSourceImage(sourcePhotoInput, avatarStyleInput)
+        : await generateGenericDartAvatar(trimmedName, 'create', avatarStyleInput);
     }
 
     persist([
@@ -193,6 +209,7 @@ export function PlayersPage() {
         avatarUrl: finalAvatar || sourcePhotoInput || '',
         avatarSourcePhoto: sourcePhotoInput || undefined,
         avatarKind: sourcePhotoInput ? 'PHOTO_STYLIZED' : 'GENERIC_AI',
+        avatarStyle: avatarStyleInput,
       },
     ]);
 
@@ -211,6 +228,7 @@ export function PlayersPage() {
     setIntroAnnouncementEnabledInput(true);
     setAvatarInput('');
     setSourcePhotoInput('');
+    setAvatarStyleInput('COMIC');
     setShowModal(false);
   };
 
@@ -220,10 +238,10 @@ export function PlayersPage() {
     setIsGenerating(true);
     try {
       if (sourcePhotoInput) {
-        const styled = await generateProAvatarFromSourceImage(sourcePhotoInput);
+        const styled = await generateProAvatarFromSourceImage(sourcePhotoInput, avatarStyleInput);
         setAvatarInput(styled);
       } else {
-        const generated = await generateGenericDartAvatar(trimmedName, 'modal');
+        const generated = await generateGenericDartAvatar(trimmedName, 'modal', avatarStyleInput);
         setAvatarInput(generated);
       }
     } finally {
@@ -235,9 +253,10 @@ export function PlayersPage() {
     const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
+    const style = player.avatarStyle ?? 'COMIC';
     const generated = player.avatarSourcePhoto
-      ? await generateProAvatarFromSourceImage(player.avatarSourcePhoto)
-      : await generateGenericDartAvatar(displayName, playerId);
+      ? await generateProAvatarFromSourceImage(player.avatarSourcePhoto, style)
+      : await generateGenericDartAvatar(displayName, playerId, style);
 
     if (!generated) return;
     updatePlayerAvatar(playerId, (p) => ({
@@ -259,12 +278,13 @@ export function PlayersPage() {
       const playerId = uploadTarget;
       const player = players.find((p) => p.id === playerId);
       if (!player) return;
-      const styled = await generateProAvatarFromSourceImage(dataUrl);
+      const styled = await generateProAvatarFromSourceImage(dataUrl, player.avatarStyle ?? "COMIC");
       updatePlayerAvatar(playerId, (p) => ({
         ...p,
         avatarSourcePhoto: dataUrl,
         avatarUrl: styled || dataUrl,
         avatarKind: 'PHOTO_STYLIZED',
+        avatarStyle: p.avatarStyle ?? 'COMIC',
       }));
     }
 
@@ -345,6 +365,9 @@ export function PlayersPage() {
                   <button onClick={() => uploadSourceForPlayer(player.id)} className="text-[11px] text-amber-200 flex items-center gap-1">
                     <Upload size={12} /> Quelle hochladen
                   </button>
+                  <button onClick={() => updatePlayerAvatar(player.id, (p) => ({ ...p, avatarStyle: p.avatarStyle === 'REALISTIC' ? 'COMIC' : p.avatarStyle === 'COMIC' ? 'NEON' : 'REALISTIC' }))} className="text-[11px] text-cyan-200 flex items-center gap-1">
+                    <Sparkles size={12} /> Style wechseln
+                  </button>
                 </div>
               </div>
             </div>
@@ -353,7 +376,7 @@ export function PlayersPage() {
               <span className={`mt-1 inline-block text-[10px] rounded px-2 py-1 ${player.membershipStatus === 'CLUB_MEMBER' ? 'bg-emerald-900/40 text-emerald-200' : 'bg-amber-900/40 text-amber-200'}`}>
                 {player.membershipStatus === 'CLUB_MEMBER' ? 'Vereinsmitglied' : 'Schnuppermodus'}
               </span>
-              <span className="mt-1 inline-block text-[10px] rounded px-2 py-1 bg-slate-800 text-slate-300">{player.avatarKind === 'PHOTO_STYLIZED' ? 'Foto-basiert' : 'Generisch'}</span>
+              <span className="mt-1 inline-block text-[10px] rounded px-2 py-1 bg-slate-800 text-slate-300">{player.avatarKind === 'PHOTO_STYLIZED' ? 'Foto-basiert' : 'Generisch'} · {player.avatarStyle ?? 'COMIC'}</span>
             </div>
           </article>
         ))}
@@ -404,6 +427,11 @@ export function PlayersPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
+              <select value={avatarStyleInput} onChange={(e) => setAvatarStyleInput(e.target.value as 'REALISTIC' | 'COMIC' | 'NEON')} className="col-span-2 rounded-xl bg-slate-800 p-2 text-xs">
+                <option value="REALISTIC">Style: Realistisch</option>
+                <option value="COMIC">Style: Comic</option>
+                <option value="NEON">Style: Neon</option>
+              </select>
               <button onClick={generateAvatarForModal} disabled={isGenerating} className="rounded-xl bg-slate-800 p-2 text-xs flex items-center justify-center gap-1 disabled:opacity-60">
                 {isGenerating ? <><Loader2 size={12} className="animate-spin" /> Generiere...</> : <><Sparkles size={12} /> KI generieren</>}
               </button>

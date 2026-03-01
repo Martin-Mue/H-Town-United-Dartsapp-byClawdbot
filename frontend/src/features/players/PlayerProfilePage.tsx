@@ -18,6 +18,7 @@ export function PlayerProfilePage() {
   const [bioDraft, setBioDraft] = useState<{ nickname: string; nicknamePronunciation: string; throwingArm: 'RIGHT' | 'LEFT' | 'BOTH'; gripStyle: string; dartWeightGrams: string; seasonsPlayed: string; announcerStyle: 'ARENA' | 'CLASSIC' | 'HYPE' | 'COOL' | 'INTIMIDATOR'; introAnnouncementEnabled: boolean }>({ nickname: '', nicknamePronunciation: '', throwingArm: 'RIGHT', gripStyle: '', dartWeightGrams: '', seasonsPlayed: '0', announcerStyle: 'ARENA', introAnnouncementEnabled: true });
   const [trendWindow, setTrendWindow] = useState<'5' | '10' | 'all'>('10');
   const [trendMode, setTrendMode] = useState<'match' | 'mixed'>('match');
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   const players = useMemo<ManagedPlayer[]>(() => {
     try {
@@ -122,6 +123,20 @@ export function PlayerProfilePage() {
     return [values.slice(0, 4), values.slice(4, 8)];
   }, [personalScoringDistribution]);
 
+  const perMatchPlayerStats = useMemo(() => {
+    if (!player) return new Map<string, { turns: number[]; avg: number; high: number; buckets: Array<{ bucket: number; hits: number }> }>();
+    const map = new Map<string, { turns: number[]; avg: number; high: number; buckets: Array<{ bucket: number; hits: number }> }>();
+
+    for (const match of filteredMatches) {
+      const turns = match.playerTurnScores?.[player.id] ?? [];
+      const avg = turns.length > 0 ? Number((turns.reduce((a, b) => a + b, 0) / turns.length).toFixed(1)) : 0;
+      const high = turns.length > 0 ? Math.max(...turns) : 0;
+      const buckets = SCORING_BUCKETS.map((bucket) => ({ bucket, hits: turns.filter((v) => v >= bucket).length }));
+      map.set(match.id, { turns, avg, high, buckets });
+    }
+
+    return map;
+  }, [filteredMatches, player]);
 
   if (!player) return <p className="card-bg rounded-xl p-4">Spielerprofil nicht gefunden.</p>;
 
@@ -272,13 +287,37 @@ export function PlayerProfilePage() {
       <div className="rounded-2xl card-bg border soft-border p-4">
         <h3 className="text-sm uppercase mb-2">Gespielte Spiele & Ergebnisse</h3>
         <div className="space-y-2 text-xs">
-          {filteredMatches.map((m) => (
-            <div key={m.id} className="rounded bg-slate-800 p-2">
-              <p>{m.players.map((p) => p.name).join(' vs ')} · {m.mode.replace('_', ' ')}</p>
-              <p className="muted-text mt-1">{new Date(m.playedAt).toLocaleString('de-DE')} · {m.resultLabel}</p>
-              <p className="primary-text mt-1">Sieger: {m.winnerName ?? m.winnerPlayerId ?? '—'}</p>
-            </div>
-          ))}
+          {filteredMatches.map((m) => {
+            const details = perMatchPlayerStats.get(m.id);
+            const open = expandedMatchId === m.id;
+            return (
+              <div key={m.id} className="rounded bg-slate-800 p-2">
+                <p>{m.players.map((p) => p.name).join(' vs ')} · {m.mode.replace('_', ' ')}</p>
+                <p className="muted-text mt-1">{new Date(m.playedAt).toLocaleString('de-DE')} · {m.resultLabel}</p>
+                <p className="primary-text mt-1">Sieger: {m.winnerName ?? m.winnerPlayerId ?? '—'}</p>
+                <button onClick={() => setExpandedMatchId((id) => id === m.id ? null : m.id)} className="mt-2 rounded bg-slate-700 px-2 py-1 text-[11px]">
+                  {open ? 'Details ausblenden' : 'Spielstatistik anzeigen'}
+                </button>
+                {open && details && (
+                  <div className="mt-2 rounded bg-slate-900/60 p-2 text-[11px] space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <Stat title="Turns" value={String(details.turns.length)} />
+                      <Stat title="Ø im Match" value={String(details.avg)} />
+                      <Stat title="Bester Turn" value={String(details.high)} />
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {details.buckets.map((row) => (
+                        <div key={`m-${m.id}-${row.bucket}`} className="rounded bg-slate-800 p-1 text-center">
+                          <div>{row.bucket === 180 ? '180' : `${row.bucket}+`}</div>
+                          <div className="primary-text font-semibold">{row.hits}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {filteredMatches.length === 0 && <p className="muted-text">Keine Matches für den gewählten Filter.</p>}
         </div>
       </div>
