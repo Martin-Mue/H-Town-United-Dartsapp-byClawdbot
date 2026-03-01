@@ -54,6 +54,7 @@ export function MatchLivePage() {
   const [preMatchSeen, setPreMatchSeen] = useState(false);
   const [playerTurnScores, setPlayerTurnScores] = useState<Record<string, number[]>>({});
   const [cameraDetection, setCameraDetection] = useState<{ turnId: string; points: number; multiplier: 1 | 2 | 3; confidence: number; requiresManualReview: boolean } | null>(null);
+  const [cameraReviewDraft, setCameraReviewDraft] = useState<{ turnId: string; points: number; multiplier: 1 | 2 | 3; confidence: number } | null>(null);
   const [quickEntryMode, setQuickEntryMode] = useState(false);
   const [quickTurnPoints, setQuickTurnPoints] = useState('');
   const [quickFinalMultiplier, setQuickFinalMultiplier] = useState<1 | 2 | 3>(2);
@@ -337,24 +338,18 @@ export function MatchLivePage() {
     });
 
     if (result.requiresManualReview) {
-      const corrected = await apiClient.applyManualCameraCorrection({
-        matchId: state.matchId,
+      setCameraReviewDraft({
         turnId: result.turnId,
-        correctedPoints: result.points,
-        correctedMultiplier: result.multiplier,
-        reason: 'low-confidence-review',
+        points: result.points,
+        multiplier: result.multiplier,
+        confidence: result.confidence,
       });
-      setCameraDetection({
-        turnId: result.turnId,
-        points: corrected.points,
-        multiplier: corrected.multiplier,
-        confidence: corrected.confidence,
-        requiresManualReview: false,
-      });
-      setErrorMessage('KI-Vorschlag hatte geringe Sicherheit und wurde im Review-Flow bestätigt.');
+      setCameraDetection(null);
+      setErrorMessage('KI-Vorschlag hat geringe Sicherheit. Bitte manuell prüfen und bestätigen.');
       return;
     }
 
+    setCameraReviewDraft(null);
     setCameraDetection({
       turnId: result.turnId,
       points: result.points,
@@ -365,6 +360,28 @@ export function MatchLivePage() {
     setErrorMessage(null);
   };
 
+
+
+  const applyManualCameraReview = async () => {
+    if (!state || !cameraReviewDraft) return;
+    const corrected = await apiClient.applyManualCameraCorrection({
+      matchId: state.matchId,
+      turnId: cameraReviewDraft.turnId,
+      correctedPoints: Math.max(0, Math.min(180, cameraReviewDraft.points)),
+      correctedMultiplier: cameraReviewDraft.multiplier,
+      reason: 'manual-review-confirmed',
+    });
+
+    setCameraDetection({
+      turnId: cameraReviewDraft.turnId,
+      points: corrected.points,
+      multiplier: corrected.multiplier,
+      confidence: corrected.confidence,
+      requiresManualReview: false,
+    });
+    setCameraReviewDraft(null);
+    setErrorMessage(null);
+  };
   const submitTurn = async () => {
     if (!state) return;
     if (bullOffRequired) { setErrorMessage('Ausbullen erforderlich. Bitte Sieger per Bull-Off festlegen.'); return; }
@@ -637,6 +654,37 @@ export function MatchLivePage() {
               <button onClick={addDartToTurn} disabled={pendingX01.length >= 3} className="w-full rounded-lg bg-slate-800 p-2 text-xs">Dart hinzufügen ({pendingX01.length}/3)</button>
               <button onClick={() => void runCameraDetection()} className="w-full rounded-lg bg-slate-800 p-2 text-xs">KI Dart erkennen</button>
             </div>
+
+            {cameraReviewDraft && (
+              <div className="rounded bg-amber-900/20 border border-amber-300/40 p-2 text-[11px] space-y-2">
+                <p>Manuelle Kamera-Prüfung nötig · Confidence {Math.round(cameraReviewDraft.confidence * 100)}%</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={180}
+                    value={cameraReviewDraft.points}
+                    onChange={(e) => setCameraReviewDraft((d) => d ? { ...d, points: Number(e.target.value || 0) } : d)}
+                    className="rounded bg-slate-800 p-2"
+                    placeholder="Punkte"
+                  />
+                  <select
+                    value={cameraReviewDraft.multiplier}
+                    onChange={(e) => setCameraReviewDraft((d) => d ? { ...d, multiplier: Number(e.target.value) as 1 | 2 | 3 } : d)}
+                    className="rounded bg-slate-800 p-2"
+                  >
+                    <option value={1}>Single</option>
+                    <option value={2}>Double</option>
+                    <option value={3}>Triple</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => void applyManualCameraReview()} className="rounded bg-amber-300 text-slate-900 px-2 py-1 font-semibold">Korrektur speichern</button>
+                  <button onClick={() => setCameraReviewDraft(null)} className="rounded bg-slate-800 px-2 py-1">Verwerfen</button>
+                </div>
+              </div>
+            )}
+
             {cameraDetection && (
               <div className="rounded bg-slate-900/70 border soft-border p-2 text-[11px]">
                 <p>KI Vorschlag: {cameraDetection.points} Punkte · x{cameraDetection.multiplier} · Confidence {Math.round(cameraDetection.confidence * 100)}%</p>
