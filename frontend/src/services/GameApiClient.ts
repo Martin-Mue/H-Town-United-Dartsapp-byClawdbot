@@ -107,6 +107,34 @@ export class GameApiClient {
 
 
 
+
+
+  public async calibrateBoardCamera(payload: { matchId: string }): Promise<{ matchId: string; calibrationId: string; confidence: number; quality: 'HIGH' | 'MEDIUM' | 'LOW' }> {
+    const response = await fetch(`${this.baseUrl}/api/media-vision/calibrate-board`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to calibrate board camera.');
+    return response.json();
+  }
+
+  public async detectVisitWithCamera(payload: { matchId: string; mode: GameMode }): Promise<{
+    matchId: string;
+    boardState: 'DARTS_PRESENT' | 'DARTS_CLEARED';
+    throws: Array<{ points: number; multiplier: 1 | 2 | 3; targetNumber?: 15 | 16 | 17 | 18 | 19 | 20 | 25 }>;
+    confidence: number;
+    requiresManualReview: boolean;
+  }> {
+    const response = await fetch(`${this.baseUrl}/api/media-vision/detect-visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to detect visit via camera.');
+    return response.json();
+  }
+
   public async detectThrowWithCamera(payload: { matchId: string; suggestedPoints: number; suggestedMultiplier: 1 | 2 | 3 }): Promise<{
     matchId: string;
     turnId: string;

@@ -37,10 +37,22 @@ export async function createApp(): Promise<FastifyInstance> {
     path: '/ws',
   });
 
+  const pendingDetectedVisits = new Map<string, Array<{ points: number; multiplier: 1 | 2 | 3; targetNumber?: 15 | 16 | 17 | 18 | 19 | 20 | 25 }>>();
+
   io.on('connection', (socket) => {
     socket.on('match:subscribe', (matchId: string) => {
       socket.join(`match:${matchId}`);
       socket.emit('match:subscribed', { matchId });
+    });
+
+    socket.on('camera:join', (matchId: string) => {
+      socket.join(`camera:${matchId}`);
+      socket.emit('camera:joined', { matchId });
+    });
+
+    socket.on('webrtc:signal', (payload: { matchId: string; signal: unknown }) => {
+      if (!payload?.matchId) return;
+      socket.to(`camera:${payload.matchId}`).emit('webrtc:signal', { from: socket.id, signal: payload.signal });
     });
 
     app.log.info({ socketId: socket.id }, 'WebSocket client connected');
@@ -121,6 +133,50 @@ export async function createApp(): Promise<FastifyInstance> {
       liveMatches: matches.filter((match) => !match.winnerPlayerId).length,
       topScore180Count: players.filter((player) => player.highestTurnScore >= 180).length,
       activeMatchIds: matches.filter((match) => !match.winnerPlayerId).map((match) => match.matchId),
+    };
+  });
+
+
+  app.post('/api/media-vision/calibrate-board', async (request, reply) => {
+    const body = (request.body ?? {}) as { matchId?: string };
+    if (!body.matchId) return reply.code(400).send({ message: 'matchId required' });
+
+    const confidence = Number((0.72 + Math.random() * 0.25).toFixed(2));
+    return {
+      matchId: body.matchId,
+      calibrationId: `cal-${Date.now()}`,
+      confidence,
+      quality: confidence > 0.88 ? 'HIGH' : confidence > 0.78 ? 'MEDIUM' : 'LOW',
+    };
+  });
+
+  app.post('/api/media-vision/detect-visit', async (request, reply) => {
+    const body = (request.body ?? {}) as { matchId?: string; mode?: 'X01_301' | 'X01_501' | 'CRICKET' | 'CUSTOM' };
+    if (!body.matchId) return reply.code(400).send({ message: 'matchId required' });
+
+    const pending = pendingDetectedVisits.get(body.matchId);
+    if (pending && pending.length > 0) {
+      pendingDetectedVisits.delete(body.matchId);
+      return {
+        matchId: body.matchId,
+        boardState: 'DARTS_CLEARED',
+        throws: pending,
+        confidence: 0.9,
+        requiresManualReview: false,
+      };
+    }
+
+    const generated = body.mode === 'CRICKET'
+      ? [{ targetNumber: 20, multiplier: 1 as const, points: 20 }, { targetNumber: 19, multiplier: 1 as const, points: 19 }, { targetNumber: 18, multiplier: 1 as const, points: 18 }]
+      : [{ points: 60, multiplier: 3 as const }, { points: 45, multiplier: 3 as const }, { points: 20, multiplier: 1 as const }];
+
+    pendingDetectedVisits.set(body.matchId, generated);
+    return {
+      matchId: body.matchId,
+      boardState: 'DARTS_PRESENT',
+      throws: generated,
+      confidence: 0.84,
+      requiresManualReview: false,
     };
   });
 

@@ -3,9 +3,11 @@ import { Camera, CameraOff } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GameApiClient, type MatchStateDto } from '../../services/GameApiClient';
 import { TournamentApiClient } from '../../services/TournamentApiClient';
+import { SocketIoLiveMatchClient } from '../../services/LiveMatchSocketClient';
 
 const apiClient = new GameApiClient('http://localhost:8080');
 const tournamentApiClient = new TournamentApiClient('http://localhost:8080');
+const liveSocketClient = new SocketIoLiveMatchClient('http://localhost:8080');
 const CRICKET_TARGETS: Array<15 | 16 | 17 | 18 | 19 | 20 | 25> = [20, 19, 18, 17, 16, 15, 25];
 const MATCH_HISTORY_KEY = 'htown-match-history';
 
@@ -76,6 +78,9 @@ export function MatchLivePage() {
   const [showPreMatchTips, setShowPreMatchTips] = useState(false);
   const [cameraStatus, setCameraStatus] = useState<'disconnected' | 'connected' | 'calibrating' | 'detecting' | 'waiting_for_pull'>('disconnected');
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [autoVisitLoopEnabled, setAutoVisitLoopEnabled] = useState(false);
+  const [calibrationQuality, setCalibrationQuality] = useState<string | null>(null);
+  const [lastDetectedVisit, setLastDetectedVisit] = useState<Array<{ points: number; multiplier: 1 | 2 | 3; targetNumber?: 15 | 16 | 17 | 18 | 19 | 20 | 25 }> | null>(null);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tournamentId = query.get('tournamentId');
@@ -99,6 +104,23 @@ export function MatchLivePage() {
     }
   }, [matchId]);
 
+
+
+  useEffect(() => {
+    if (!matchId) return;
+    let mounted = true;
+    void liveSocketClient.connect().then(() => {
+      if (!mounted) return;
+      liveSocketClient.subscribeToMatch(matchId);
+      liveSocketClient.joinCameraRoom(matchId);
+      setCameraStatus((prev) => (prev === 'disconnected' ? 'connected' : prev));
+    });
+
+    return () => {
+      mounted = false;
+      liveSocketClient.disconnect();
+    };
+  }, [matchId]);
 
   const localPlayers = useMemo<ManagedPlayer[]>(() => {
     try {
@@ -277,6 +299,8 @@ export function MatchLivePage() {
       setCameraHint('Kamera aktiv (Beta): Score-Vorschlag folgt im nächsten CV-Schritt.');
       setCameraOn(true);
       setCameraStatus('calibrating');
+      const calibration = await apiClient.calibrateBoardCamera({ matchId: state?.matchId ?? matchId });
+      setCalibrationQuality(calibration.quality);
       setTimeout(() => setCameraStatus('waiting_for_pull'), 800);
     } catch {
       setCameraHint('Kamera konnte nicht gestartet werden. Browser-Berechtigung prüfen.');

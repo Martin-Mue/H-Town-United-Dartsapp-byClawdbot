@@ -8,6 +8,15 @@ export interface LiveMatchSocketClient {
   /** Subscribes to one match room for live score and event updates. */
   subscribeToMatch(matchId: string): void;
 
+  /** Joins camera room for remote feed signaling. */
+  joinCameraRoom(matchId: string): void;
+
+  /** Relays webrtc signaling payload to remote peer. */
+  sendWebRtcSignal(matchId: string, signal: unknown): void;
+
+  /** Subscribes to incoming webrtc signal packets. */
+  onWebRtcSignal(handler: (payload: { from: string; signal: unknown }) => void): void;
+
   /** Disconnects and releases active subscriptions. */
   disconnect(): void;
 }
@@ -29,6 +38,18 @@ export class SocketIoLiveMatchClient implements LiveMatchSocketClient {
   /** Subscribes to one match room for live score and event updates. */
   subscribeToMatch(matchId: string): void {
     this.socket?.emit('match:subscribe', matchId);
+  }
+
+  joinCameraRoom(matchId: string): void {
+    this.socket?.emit('camera:join', matchId);
+  }
+
+  sendWebRtcSignal(matchId: string, signal: unknown): void {
+    this.socket?.emit('webrtc:signal', { matchId, signal });
+  }
+
+  onWebRtcSignal(handler: (payload: { from: string; signal: unknown }) => void): void {
+    this.socket?.on('webrtc:signal', handler);
   }
 
   /** Disconnects and releases active subscriptions. */
