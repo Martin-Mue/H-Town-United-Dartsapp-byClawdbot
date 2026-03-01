@@ -83,7 +83,7 @@ export function NewGamePage() {
     <section className="space-y-4 animate-[fadeIn_.25s_ease]">
       <article className="hero-gradient rounded-2xl border soft-border p-4">
         <h2 className="text-xl uppercase">Spiel erstellen</h2>
-        <p className="text-xs muted-text mt-1">Wähle Modus, Spieler und Regeln in 3 Schritten.</p>
+        <p className="text-xs muted-text mt-1">Schritt-für-Schritt durch den Setup-Assistenten.</p>
       </article>
 
 
@@ -105,7 +105,8 @@ export function NewGamePage() {
         </p>
       </div>
 
-      <div className={`card-bg rounded-2xl border soft-border p-4 space-y-3 ${setupStep === 1 ? '' : 'opacity-70'}`}>
+      {setupStep === 1 && (
+      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
         <h3 className="text-sm uppercase flex items-center gap-2"><Target size={14} /> Spielmodus</h3>
         <div className="grid grid-cols-2 gap-2">
           {([
@@ -128,8 +129,10 @@ export function NewGamePage() {
           </div>
         )}
       </div>
+      )}
 
-      <div className={`card-bg rounded-2xl border soft-border p-4 space-y-3 ${setupStep === 2 ? '' : 'opacity-70'}`}>
+      {setupStep === 2 && (
+      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm uppercase">Spieler</h3>
           <button onClick={() => setShowClubPick((v) => !v)} className="rounded-lg bg-slate-800 px-2 py-1 text-xs flex items-center gap-1">
@@ -163,15 +166,20 @@ export function NewGamePage() {
         <input value={playerOneName} onChange={(e) => setPlayerOneName(e.target.value)} className="w-full rounded-xl bg-slate-800 p-3" />
         <input value={playerTwoName} onChange={(e) => setPlayerTwoName(e.target.value)} className="w-full rounded-xl bg-slate-800 p-3" />
       </div>
+      )}
 
-      <div className={`card-bg rounded-2xl border soft-border p-4 space-y-3 ${setupStep === 3 ? '' : 'opacity-70'}`}>
+      {setupStep === 3 && (
+      <div className="card-bg rounded-2xl border soft-border p-4 space-y-3">
         <h3 className="text-sm uppercase flex items-center gap-2"><Trophy size={14} /> Match Modi</h3>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <label className="rounded-xl bg-slate-800 p-3"><span className="muted-text">Legs pro Set</span><input type="number" min={1} max={15} value={legsPerSet} onChange={(e) => setLegsPerSet(Number(e.target.value || 1))} className="mt-1 w-full rounded bg-slate-700 p-2" /></label>
           <label className="rounded-xl bg-slate-800 p-3"><span className="muted-text">Sets zum Sieg</span><input type="number" min={1} max={9} value={setsToWin} onChange={(e) => setSetsToWin(Number(e.target.value || 1))} className="mt-1 w-full rounded bg-slate-700 p-2" /></label>
         </div>
       </div>
+      )}
 
+      {setupStep === 3 && (
+      <>
       <div className="card-bg rounded-2xl border soft-border p-4 space-y-2">
         <h3 className="text-sm uppercase">Checkout</h3>
         <CheckoutSelector label={playerOneName || 'Spieler 1'} value={playerOneCheckout} onChange={setPlayerOneCheckout} />
@@ -202,6 +210,8 @@ export function NewGamePage() {
           Kamera direkt aktivieren: <span className="primary-text font-semibold">{cameraAssistEnabled ? 'Ja' : 'Nein'}</span>
         </button>
       </div>
+      </>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <button onClick={() => setSetupStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)} disabled={setupStep === 1} className="rounded-lg bg-slate-800 p-2 text-sm disabled:opacity-40">Zurück</button>
