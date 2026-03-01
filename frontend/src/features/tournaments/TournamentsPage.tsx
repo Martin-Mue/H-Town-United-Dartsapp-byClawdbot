@@ -222,9 +222,12 @@ export function TournamentsPage() {
                 <div key={`preview-${round.roundNumber}`} className="rounded bg-slate-800/70 p-2">
                   <p className="text-[11px] uppercase mb-1">Round {round.roundNumber} · {round.mode.replace('_', ' ')}</p>
                   <div className="space-y-1">
-                    {round.matches.map((match, idx) => (
-                      <p key={`p-${round.roundNumber}-${idx}`} className="text-[11px] muted-text">{match.homePlayerId} vs {match.awayPlayerId}</p>
-                    ))}
+                    {round.matches.map((match, idx) => {
+                      const isBye = match.homePlayerId === 'BYE' || match.awayPlayerId === 'BYE';
+                      const isTbd = match.homePlayerId === 'TBD' || match.awayPlayerId === 'TBD';
+                      const tag = isBye ? 'Direktquali/Freilos' : isTbd ? 'Folgerunde' : round.roundNumber === 1 && byePlacement === 'PLAY_IN' ? 'Play-In-Duell' : 'Duell';
+                      return <p key={`p-${round.roundNumber}-${idx}`} className="text-[11px] muted-text">[{tag}] {match.homePlayerId} vs {match.awayPlayerId}</p>;
+                    })}
                   </div>
                 </div>
               ))}

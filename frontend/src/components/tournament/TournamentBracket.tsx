@@ -12,6 +12,23 @@ export type TournamentRound = {
   matches: TournamentMatch[];
 };
 
+
+type FixtureState = 'NOT_READY' | 'READY' | 'IN_PROGRESS' | 'COMPLETED';
+
+function getFixtureState(match: TournamentMatch): FixtureState {
+  if (match.winnerPlayerId) return 'COMPLETED';
+  if (match.linkedMatchId) return 'IN_PROGRESS';
+  if (['BYE', 'TBD'].includes(match.homePlayerId) || ['BYE', 'TBD'].includes(match.awayPlayerId)) return 'NOT_READY';
+  return 'READY';
+}
+
+function fixtureStateLabel(state: FixtureState): string {
+  if (state === 'READY') return 'Startbereit';
+  if (state === 'IN_PROGRESS') return 'Läuft';
+  if (state === 'COMPLETED') return 'Abgeschlossen';
+  return 'Nicht bereit';
+}
+
 /** Adaptive tournament bracket with winner/result display and per-fixture match launch action. */
 export function TournamentBracket({
   rounds,
@@ -49,11 +66,17 @@ export function TournamentBracket({
 
               <div style={{ marginTop: `${matchMarginTop}px`, display: 'flex', flexDirection: 'column', gap: `${columnGapPx}px` }}>
               {paddedMatches.map((match, fixtureIndex) => {
-                const playable = !['BYE', 'TBD'].includes(match.homePlayerId) && !['BYE', 'TBD'].includes(match.awayPlayerId);
-                const canStart = playable && !match.linkedMatchId && !match.winnerPlayerId;
+                const state = getFixtureState(match);
+                const canSetWinner = state === 'READY';
+                const canStart = state === 'READY';
+
                 return (
                   <div key={`${round.roundNumber}-${fixtureIndex}`} className="relative h-[148px] rounded-xl border soft-border card-bg p-3 flex flex-col justify-between">
                     <div className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${state === 'COMPLETED' ? 'bg-emerald-900/40 text-emerald-200' : state === 'IN_PROGRESS' ? 'bg-amber-900/40 text-amber-200' : state === 'READY' ? 'bg-sky-900/40 text-sky-200' : 'bg-slate-800 text-slate-300'}`}>{fixtureStateLabel(state)}</span>
+                        {match.linkedMatchId && <span className="text-[10px] muted-text">#{match.linkedMatchId.slice(-6)}</span>}
+                      </div>
                       <PlayerLine name={match.homePlayerId} winner={match.winnerPlayerId === match.homePlayerId} />
                       <PlayerLine name={match.awayPlayerId} winner={match.winnerPlayerId === match.awayPlayerId} />
                     </div>
@@ -67,14 +90,14 @@ export function TournamentBracket({
                         <div className="mt-2 grid grid-cols-2 gap-1">
                           <button
                             onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.homePlayerId)}
-                            disabled={!playable}
+                            disabled={!canSetWinner}
                             className="rounded bg-slate-800 p-1 text-[11px] disabled:opacity-40"
                           >
                             {match.homePlayerId}
                           </button>
                           <button
                             onClick={() => onSelectWinner(round.roundNumber, fixtureIndex, match.awayPlayerId)}
-                            disabled={!playable}
+                            disabled={!canSetWinner}
                             className="rounded bg-slate-800 p-1 text-[11px] disabled:opacity-40"
                           >
                             {match.awayPlayerId}
