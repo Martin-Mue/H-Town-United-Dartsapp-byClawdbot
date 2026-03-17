@@ -1,0 +1,337 @@
+[
+  {
+    "tournamentId": "tournament-bfd2ab3c-7f7d-4478-8e4f-420f70656e78",
+    "name": "H-Town Open",
+    "format": "SINGLE_ELIMINATION",
+    "settings": {
+      "byePlacement": "ROUND_1",
+      "seedingMode": "RANDOM",
+      "defaultLegsPerSet": 3,
+      "defaultSetsToWin": 2,
+      "allowRoundModeSwitch": true
+    },
+    "updatedAt": "2026-02-15T23:13:57.133Z",
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "mode": "X01_301",
+        "fixtures": [
+          {
+            "homePlayerId": "Player A",
+            "awayPlayerId": "Player B"
+          },
+          {
+            "homePlayerId": "Player C",
+            "awayPlayerId": "Player D"
+          }
+        ]
+      },
+      {
+        "roundNumber": 2,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "TBD",
+            "awayPlayerId": "TBD"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tournamentId": "tournament-a78aa518-e766-4778-9a62-2cf90cfb0c7d",
+    "name": "H-Town Cup",
+    "format": "SINGLE_ELIMINATION",
+    "settings": {
+      "byePlacement": "DISTRIBUTED",
+      "seedingMode": "RANDOM",
+      "defaultLegsPerSet": 3,
+      "defaultSetsToWin": 2,
+      "allowRoundModeSwitch": true
+    },
+    "updatedAt": "2026-02-16T18:54:47.192Z",
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "peter lustig",
+            "awayPlayerId": "BYE",
+            "winnerPlayerId": "peter lustig",
+            "resultLabel": "Freilos"
+          },
+          {
+            "homePlayerId": "mm",
+            "awayPlayerId": "Ben Albrecht",
+            "winnerPlayerId": "mm"
+          },
+          {
+            "homePlayerId": "Sarah Neumann",
+            "awayPlayerId": "BYE",
+            "winnerPlayerId": "Sarah Neumann",
+            "resultLabel": "Freilos"
+          },
+          {
+            "homePlayerId": "Jonas Hoffmann",
+            "awayPlayerId": "Mert Kaya",
+            "winnerPlayerId": "Jonas Hoffmann"
+          }
+        ]
+      },
+      {
+        "roundNumber": 2,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "peter lustig",
+            "awayPlayerId": "mm",
+            "winnerPlayerId": "peter lustig"
+          },
+          {
+            "homePlayerId": "Sarah Neumann",
+            "awayPlayerId": "Jonas Hoffmann",
+            "winnerPlayerId": "Sarah Neumann"
+          }
+        ]
+      },
+      {
+        "roundNumber": 3,
+        "mode": "CRICKET",
+        "fixtures": [
+          {
+            "homePlayerId": "peter lustig",
+            "awayPlayerId": "Sarah Neumann",
+            "linkedMatchId": "match-8adc2af9-e2ba-4371-bd8a-1d5dd44fdb0d",
+            "winnerPlayerId": "peter lustig"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tournamentId": "tournament-85c764c9-1b4c-410b-854f-f4c93e5b6fc9",
+    "name": "H-Town Cup",
+    "format": "ROUND_ROBIN",
+    "settings": {
+      "byePlacement": "ROUND_1",
+      "seedingMode": "RANDOM",
+      "defaultLegsPerSet": 3,
+      "defaultSetsToWin": 2,
+      "allowRoundModeSwitch": true
+    },
+    "updatedAt": "2026-02-16T18:55:02.874Z",
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "mode": "X01_301",
+        "fixtures": [
+          {
+            "homePlayerId": "Ben Albrecht",
+            "awayPlayerId": "Sarah Neumann",
+            "linkedMatchId": "match-c993d6af-cd01-4e59-ab6e-51ae175d3278",
+            "winnerPlayerId": "Ben Albrecht",
+            "resultLabel": "Ben Albrecht (0:0)"
+          },
+          {
+            "homePlayerId": "Ben Albrecht",
+            "awayPlayerId": "Mert Kaya",
+            "linkedMatchId": "match-0fe15e22-7ba9-4083-833b-53aa492f9195",
+            "winnerPlayerId": "Ben Albrecht"
+          },
+          {
+            "homePlayerId": "Ben Albrecht",
+            "awayPlayerId": "peter lustig",
+            "winnerPlayerId": "Ben Albrecht"
+          },
+          {
+            "homePlayerId": "Ben Albrecht",
+            "awayPlayerId": "mm",
+            "winnerPlayerId": "Ben Albrecht"
+          },
+          {
+            "homePlayerId": "Sarah Neumann",
+            "awayPlayerId": "Mert Kaya",
+            "winnerPlayerId": "Sarah Neumann"
+          },
+          {
+            "homePlayerId": "Sarah Neumann",
+            "awayPlayerId": "peter lustig",
+            "winnerPlayerId": "Sarah Neumann"
+          },
+          {
+            "homePlayerId": "Sarah Neumann",
+            "awayPlayerId": "mm",
+            "winnerPlayerId": "Sarah Neumann"
+          },
+          {
+            "homePlayerId": "Mert Kaya",
+            "awayPlayerId": "peter lustig",
+            "winnerPlayerId": "Mert Kaya"
+          },
+          {
+            "homePlayerId": "Mert Kaya",
+            "awayPlayerId": "mm",
+            "winnerPlayerId": "Mert Kaya"
+          },
+          {
+            "homePlayerId": "peter lustig",
+            "awayPlayerId": "mm",
+            "winnerPlayerId": "peter lustig"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tournamentId": "tournament-4e298543-fddb-4883-b995-8f8611594e33",
+    "name": "H-Town Cup",
+    "format": "SINGLE_ELIMINATION",
+    "settings": {
+      "byePlacement": "ROUND_1",
+      "seedingMode": "RANDOM",
+      "defaultLegsPerSet": 1,
+      "defaultSetsToWin": 1,
+      "allowRoundModeSwitch": true
+    },
+    "updatedAt": "2026-02-16T16:23:53.049Z",
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "mode": "CUSTOM",
+        "fixtures": [
+          {
+            "homePlayerId": "peter lustig",
+            "awayPlayerId": "mm",
+            "linkedMatchId": "match-e0c501c8-72d3-4d73-aed1-170e1b59b791",
+            "winnerPlayerId": "mm"
+          },
+          {
+            "homePlayerId": "Ben Albrecht",
+            "awayPlayerId": "Sarah Neumann",
+            "winnerPlayerId": "Ben Albrecht"
+          },
+          {
+            "homePlayerId": "Jonas Hoffmann",
+            "awayPlayerId": "BYE",
+            "winnerPlayerId": "Jonas Hoffmann",
+            "resultLabel": "Freilos"
+          },
+          {
+            "homePlayerId": "BYE",
+            "awayPlayerId": "BYE"
+          }
+        ]
+      },
+      {
+        "roundNumber": 2,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "mm",
+            "awayPlayerId": "Ben Albrecht",
+            "winnerPlayerId": "mm"
+          },
+          {
+            "homePlayerId": "Jonas Hoffmann",
+            "awayPlayerId": "TBD"
+          }
+        ]
+      },
+      {
+        "roundNumber": 3,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "mm",
+            "awayPlayerId": "TBD"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tournamentId": "tournament-7a9b08b2-9b03-4a49-861a-9faf2df84469",
+    "name": "Test Cup",
+    "format": "SINGLE_ELIMINATION",
+    "settings": {
+      "byePlacement": "ROUND_1",
+      "seedingMode": "RANDOM",
+      "defaultLegsPerSet": 3,
+      "defaultSetsToWin": 2,
+      "allowRoundModeSwitch": true
+    },
+    "updatedAt": "2026-02-16T18:46:04.318Z",
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "mode": "X01_301",
+        "fixtures": [
+          {
+            "homePlayerId": "A",
+            "awayPlayerId": "B",
+            "winnerPlayerId": "A"
+          },
+          {
+            "homePlayerId": "C",
+            "awayPlayerId": "D",
+            "winnerPlayerId": "C"
+          }
+        ]
+      },
+      {
+        "roundNumber": 2,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "A",
+            "awayPlayerId": "C",
+            "winnerPlayerId": "A"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tournamentId": "tournament-de7ccad3-d63e-4232-8dd4-30b32b3772bc",
+    "name": "H-Town Cup",
+    "format": "SINGLE_ELIMINATION",
+    "settings": {
+      "byePlacement": "ROUND_1",
+      "seedingMode": "RANKING",
+      "defaultLegsPerSet": 1,
+      "defaultSetsToWin": 1,
+      "allowRoundModeSwitch": true
+    },
+    "updatedAt": "2026-02-16T19:41:48.580Z",
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "peter lustig",
+            "awayPlayerId": "Martin",
+            "winnerPlayerId": "Martin"
+          },
+          {
+            "homePlayerId": "Ben Albrecht",
+            "awayPlayerId": "Jonas Hoffmann",
+            "winnerPlayerId": "Jonas Hoffmann"
+          }
+        ]
+      },
+      {
+        "roundNumber": 2,
+        "mode": "X01_501",
+        "fixtures": [
+          {
+            "homePlayerId": "Martin",
+            "awayPlayerId": "Jonas Hoffmann",
+            "winnerPlayerId": "Martin"
+          }
+        ]
+      }
+    ]
+  }
+]
